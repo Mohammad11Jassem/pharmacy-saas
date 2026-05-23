@@ -14,10 +14,150 @@ datasource db {
   provider = "postgresql"
 }
 
-model UserAccount {
-  userId Int @id @default(autoincrement()) @map("user_id")
+// model UserAccount {
+//   userId Int @id @default(autoincrement()) @map("user_id")
 
-  email String @unique
+//   email String @unique
+
+//   @@map("user_accounts")
+// }
+
+
+enum AccountType {
+  ADMIN
+  PHARMACY_OWNER
+  MEDICAL_TEAM
+}
+
+enum UserAccountStatus {
+  ACTIVE
+  INACTIVE
+  SUSPENDED
+  PENDING
+}
+
+enum PharmacyStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  REJECTED
+}
+
+enum PharmacyDocumentStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model UserAccount {
+  userId       Int               @id @default(autoincrement()) @map("user_id")
+  email        String            @unique
+  phone        String            @unique
+  fullName     String            @map("full_name")
+  passwordHash String            @map("password_hash")
+  accountType  AccountType       @map("account_type")
+  status       UserAccountStatus @default(ACTIVE)
+
+  pharmacyOwner PharmacyOwner?
+
+  createdAt    DateTime          @default(now()) @map("created_at")
+  updatedAt    DateTime          @updatedAt @map("updated_at")
 
   @@map("user_accounts")
+}
+
+model PharmacyOwner {
+  pharmacyOwnerId Int @id @default(autoincrement()) @map("pharmacy_owner_id")
+
+  userId Int         @unique @map("user_id")
+  user   UserAccount @relation(fields: [userId], references: [userId], onDelete: Cascade)
+
+  nationalId String @unique @map("national_id")
+
+  pharmacies Pharmacy[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("pharmacy_owners")
+}
+
+model Pharmacy {
+  pharmacyId Int @id @default(autoincrement()) @map("pharmacy_id")
+
+  pharmacyOwnerId Int           @map("pharmacy_owner_id")
+  pharmacyOwner   PharmacyOwner @relation(fields: [pharmacyOwnerId], references: [pharmacyOwnerId], onDelete: Cascade)
+
+  pharmacistLicenseNo String? @unique @map("pharmacist_license_no")
+
+  pharmacyName      String  @map("pharmacy_name")
+  pharmacyCode      String  @unique @map("pharmacy_code")
+  contactPhone      String? @map("contact_phone")
+  email             String? @unique
+  governorate       String?
+  healthDirectorate String? @map("health_directorate")
+  areaName          String? @map("area_name")
+  addressText       String? @map("address_text")
+
+  status      PharmacyStatus @default(PENDING)
+  openingDate DateTime?      @map("opening_date") @db.Date
+
+  credential PharmacyCredential?
+  documents  PharmacyDocument[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("pharmacies")
+}
+
+model PharmacyCredential {
+  pharmacyCredentialId Int @id @default(autoincrement()) @map("pharmacy_credential_id")
+
+  pharmacyId Int      @unique @map("pharmacy_id")
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [pharmacyId], onDelete: Cascade)
+
+  loginCode    String    @unique @map("login_code")
+  passwordHash String    @map("password_hash")
+  lockedUntil  DateTime? @map("locked_until")
+  activatedAt  DateTime? @map("activated_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("pharmacy_credentials")
+}
+
+model PharmacyDocument {
+  documentId Int @id @default(autoincrement()) @map("document_id")
+
+  pharmacyId Int      @map("pharmacy_id")
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [pharmacyId], onDelete: Cascade)
+
+  documentTypeId Int                  @map("document_type_id")
+  documentType   PharmacyDocumentType @relation(fields: [documentTypeId], references: [documentTypeId])
+
+  fileUrl String                 @map("file_url")
+  notes   String?
+  status  PharmacyDocumentStatus @default(PENDING)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("pharmacy_documents")
+}
+
+model PharmacyDocumentType {
+  documentTypeId Int @id @default(autoincrement()) @map("document_type_id")
+
+  documentNameAr   String  @map("document_name_ar")
+  issuingAuthority String? @map("issuing_authority")
+  isRequired       Boolean @default(true) @map("is_required")
+
+  documents PharmacyDocument[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("pharmacy_document_types")
 }
