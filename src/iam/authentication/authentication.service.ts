@@ -15,11 +15,24 @@ import { ConfigType } from '@nestjs/config';
 import { SingUpDto } from './dto/sing-up.dto/sing-up.dto';
 import { SingInDto } from './dto/sing-in.dto/sing-in.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto/refresh-token.dto';
+import { AccountType } from '../../generated/prisma/enums';
 
+type AccessTokenPayload = {
+  email: string;
+  accountType: AccountType;
+  type: 'access';
+};
+
+type RefreshTokenPayload = {
+  type: 'refresh';
+};
 @Injectable()
 export class AuthenticationService {
   constructor(
-
+    private readonly hashingService: HashingService,
+    private readonly jwtService: JwtService,
+    @Inject(jwtConfig.KEY)
+    private readonly jwtConfiguration: ConfigType<typeof jwtConfig>,
   ) {}
 
   async SignUp(signUpDto: SingUpDto) {
@@ -89,7 +102,7 @@ export class AuthenticationService {
     // return await this.generateTokens(user);
   }
 
-  async generateTokens() {
+  // async generateTokens() {
     // const [accessToken, refreshToken] = await Promise.all([
     //   this.signToken(user.id, this.jwtConfiguration.accessTokenTtl, {
     //     email: user.email,
@@ -102,24 +115,54 @@ export class AuthenticationService {
     // ]);
     // // return user;
     // return { accessToken, refreshToken };
-  }
+  // }
 
+  async generateTokens(user: {
+    userId: number;
+    email: string;
+    accountType: AccountType;
+  }) {
+    const [accessToken, refreshToken] = await Promise.all([
+      this.signToken<AccessTokenPayload>(
+        user.userId,
+        this.jwtConfiguration.accessTokenTtl,
+        {
+          email: user.email,
+          accountType: user.accountType,
+          type: 'access',
+        },
+      ),
+
+      this.signToken<RefreshTokenPayload>(
+        user.userId,
+        this.jwtConfiguration.refreshTokenTtl,
+        {
+          type: 'refresh',
+        },
+      ),
+    ]);
+
+    return {
+      accessToken,
+      refreshToken,
+    };
+  }
   private async signToken<T>(userId: number, expiresIn: number, payload?: T) {
 
-    // return await this.jwtService.signAsync(
-    //   {
-    //     // payload
-    //     sub: userId,
-    //     ...payload,
-    //   },
-    //   {
-    //     // options
-    //     secret: this.jwtConfiguration.secret,
-    //     audience: this.jwtConfiguration.audience,
-    //     issuer: this.jwtConfiguration.issuer,
-    //     expiresIn,
-    //   },
-    // );
+    return await this.jwtService.signAsync(
+      {
+        // payload
+        sub: userId,
+        ...payload,
+      },
+      {
+        // options
+        secret: this.jwtConfiguration.secret,
+        audience: this.jwtConfiguration.audience,
+        issuer: this.jwtConfiguration.issuer,
+        expiresIn,
+      },
+    );
   }
 
   getProfile(id: number) {
