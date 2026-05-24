@@ -11,6 +11,8 @@ import { PharmacyDocumentsModule } from './modules/pharmacy-documents/pharmacy-d
 import { PharmacyOwnersModule } from './modules/pharmacy-owners/pharmacy-owners.module';
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
+import { DrugCatalogModule } from './modules/drug-catalog/drug-catalog.module';
+
 
 @Module({
   imports: [
@@ -35,6 +37,8 @@ import { PrismaModule } from './prisma/prisma.module';
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
     },
+    DrugCatalogModule,
+
   ],
 })
 export class AppModule {}
