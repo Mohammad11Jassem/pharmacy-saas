@@ -1,14 +1,3 @@
-/*
-  Warnings:
-
-  - A unique constraint covering the columns `[phone]` on the table `user_accounts` will be added. If there are existing duplicate values, this will fail.
-  - Added the required column `account_type` to the `user_accounts` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `full_name` to the `user_accounts` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `password_hash` to the `user_accounts` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `phone` to the `user_accounts` table without a default value. This is not possible if the table is not empty.
-  - Added the required column `updated_at` to the `user_accounts` table without a default value. This is not possible if the table is not empty.
-
-*/
 -- CreateEnum
 CREATE TYPE "AccountType" AS ENUM ('ADMIN', 'PHARMACY_OWNER', 'MEDICAL_TEAM');
 
@@ -21,14 +10,20 @@ CREATE TYPE "PharmacyStatus" AS ENUM ('PENDING', 'ACTIVE', 'SUSPENDED', 'REJECTE
 -- CreateEnum
 CREATE TYPE "PharmacyDocumentStatus" AS ENUM ('PENDING', 'APPROVED', 'REJECTED');
 
--- AlterTable
-ALTER TABLE "user_accounts" ADD COLUMN     "account_type" "AccountType" NOT NULL,
-ADD COLUMN     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
-ADD COLUMN     "full_name" TEXT NOT NULL,
-ADD COLUMN     "password_hash" TEXT NOT NULL,
-ADD COLUMN     "phone" TEXT NOT NULL,
-ADD COLUMN     "status" "UserAccountStatus" NOT NULL DEFAULT 'ACTIVE',
-ADD COLUMN     "updated_at" TIMESTAMP(3) NOT NULL;
+-- CreateTable
+CREATE TABLE "user_accounts" (
+    "user_id" SERIAL NOT NULL,
+    "email" TEXT NOT NULL,
+    "phone" TEXT NOT NULL,
+    "full_name" TEXT NOT NULL,
+    "password_hash" TEXT NOT NULL,
+    "account_type" "AccountType" NOT NULL,
+    "status" "UserAccountStatus" NOT NULL DEFAULT 'ACTIVE',
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "user_accounts_pkey" PRIMARY KEY ("user_id")
+);
 
 -- CreateTable
 CREATE TABLE "pharmacy_owners" (
@@ -103,6 +98,12 @@ CREATE TABLE "pharmacy_document_types" (
 );
 
 -- CreateIndex
+CREATE UNIQUE INDEX "user_accounts_email_key" ON "user_accounts"("email");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "user_accounts_phone_key" ON "user_accounts"("phone");
+
+-- CreateIndex
 CREATE UNIQUE INDEX "pharmacy_owners_user_id_key" ON "pharmacy_owners"("user_id");
 
 -- CreateIndex
@@ -122,9 +123,6 @@ CREATE UNIQUE INDEX "pharmacy_credentials_pharmacy_id_key" ON "pharmacy_credenti
 
 -- CreateIndex
 CREATE UNIQUE INDEX "pharmacy_credentials_login_code_key" ON "pharmacy_credentials"("login_code");
-
--- CreateIndex
-CREATE UNIQUE INDEX "user_accounts_phone_key" ON "user_accounts"("phone");
 
 -- AddForeignKey
 ALTER TABLE "pharmacy_owners" ADD CONSTRAINT "pharmacy_owners_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "user_accounts"("user_id") ON DELETE CASCADE ON UPDATE CASCADE;

@@ -3,10 +3,9 @@
 
 // Get a free hosted Postgres database in seconds: `npx create-db`
 
-
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider     = "prisma-client"
+  output       = "../src/generated/prisma"
   moduleFormat = "cjs"
 }
 
@@ -21,7 +20,6 @@ datasource db {
 
 //   @@map("user_accounts")
 // }
-
 
 enum AccountType {
   ADMIN
@@ -60,8 +58,8 @@ model UserAccount {
 
   pharmacyOwner PharmacyOwner?
 
-  createdAt    DateTime          @default(now()) @map("created_at")
-  updatedAt    DateTime          @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("user_accounts")
 }
@@ -160,4 +158,108 @@ model PharmacyDocumentType {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("pharmacy_document_types")
+}
+
+
+enum DosageFormCategory {
+  SOLID
+  LIQUID
+  SEMI_SOLID
+  INJECTION
+  OTHER
+}
+model ActiveIngredient {
+  ingredientId   Int     @id @default(autoincrement()) @map("ingredient_id")
+  ingredientName String  @unique @map("ingredient_name")
+  description    String? @db.Text
+
+  drugIngredients DrugIngredient[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("active_ingredients")
+}
+
+model DosageForm {
+  dosageFormId   Int                @id @default(autoincrement()) @map("dosage_form_id")
+  dosageFormName String             @unique @map("dosage_form_name")
+  formCategory   DosageFormCategory @map("form_category")
+
+  generalDrugs GeneralDrug[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("dosage_forms")
+}
+
+model DrugCategory {
+  categoryId   Int     @id @default(autoincrement()) @map("category_id")
+  categoryName String  @unique @map("category_name")
+  description  String? @db.Text
+
+  drugAssignments DrugCategoryAssignment[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("drug_categories")
+}
+
+model GeneralDrug {
+  generalDrugId Int @id @default(autoincrement()) @map("general_drug_id")
+
+  dosageFormId Int        @map("dosage_form_id")
+  dosageForm   DosageForm @relation(fields: [dosageFormId], references: [dosageFormId])
+
+  tradeName     String  @map("trade_name")
+  barcode       String  @unique
+  unitsPerBox   Int     @map("units_per_box")
+  netPrice      Decimal @map("net_price") @db.Decimal(12, 2)
+  consumerPrice Decimal @map("consumer_price") @db.Decimal(12, 2)
+  isRx          Boolean @default(false) @map("is_rx")
+  isActive      Boolean @default(true) @map("is_active")
+
+  ingredients DrugIngredient[]
+  categories  DrugCategoryAssignment[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("general_drugs")
+}
+
+model DrugIngredient {
+  drugIngredientId Int @id @default(autoincrement()) @map("drug_ingredient_id")
+
+  ingredientId Int              @map("ingredient_id")
+  ingredient   ActiveIngredient @relation(fields: [ingredientId], references: [ingredientId])
+
+  generalDrugId Int         @map("general_drug_id")
+  generalDrug   GeneralDrug @relation(fields: [generalDrugId], references: [generalDrugId], onDelete: Cascade)
+
+  strengthValue Decimal @map("strength_value") @db.Decimal(12, 3)
+  unit          String
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([generalDrugId, ingredientId, unit])
+  @@map("drug_ingredients")
+}
+
+model DrugCategoryAssignment {
+  uniqueId Int @id @default(autoincrement()) @map("unique_id")
+
+  generalDrugId Int         @map("general_drug_id")
+  generalDrug   GeneralDrug @relation(fields: [generalDrugId], references: [generalDrugId], onDelete: Cascade)
+
+  categoryId Int          @map("category_id")
+  category   DrugCategory @relation(fields: [categoryId], references: [categoryId])
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([generalDrugId, categoryId])
+  @@map("drug_category_assignments")
 }
