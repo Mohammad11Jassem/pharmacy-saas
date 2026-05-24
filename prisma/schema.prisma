@@ -54,11 +54,13 @@ model UserAccount {
   email        String            @unique
   phone        String            @unique
   fullName     String            @map("full_name")
-  passwordHash String            @map("password_hash")
+  passwordHash String?           @map("password_hash")
   accountType  AccountType       @map("account_type")
   status       UserAccountStatus @default(ACTIVE)
+  loginCode    String            @unique @map("login_code")
 
   pharmacyOwner PharmacyOwner?
+
 
   createdAt    DateTime          @default(now()) @map("created_at")
   updatedAt    DateTime          @updatedAt @map("updated_at")
@@ -118,7 +120,7 @@ model PharmacyCredential {
   pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [pharmacyId], onDelete: Cascade)
 
   loginCode    String    @unique @map("login_code")
-  passwordHash String    @map("password_hash")
+  passwordHash String?   @map("password_hash")
   lockedUntil  DateTime? @map("locked_until")
   activatedAt  DateTime? @map("activated_at")
 
