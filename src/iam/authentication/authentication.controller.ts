@@ -30,9 +30,9 @@ export class AuthenticationController {
 
     @Auth(AuthType.None)
     @HttpCode(HttpStatus.OK)
-    @Post('sign-in')
-    async signIn(@Body() signInDto: SingInDto) {
-      
+    @Post('sign-in-user')
+    async signInUser(@Body() signInDto: SingInDto) {
+      return await this.authenticationService.signInUser(signInDto);
     }
 
     // @Throttle({ default: { limit: 3, ttl: 60000 } })

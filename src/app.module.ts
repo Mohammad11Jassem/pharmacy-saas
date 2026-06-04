@@ -12,6 +12,7 @@ import { PharmacyOwnersModule } from './modules/pharmacy-owners/pharmacy-owners.
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { DrugCatalogModule } from './modules/drug-catalog/drug-catalog.module';
+import { IamModule } from './iam/iam.module';
 
 
 @Module({
@@ -27,17 +28,19 @@ import { DrugCatalogModule } from './modules/drug-catalog/drug-catalog.module';
     PharmacyDocumentTypesModule,
     PharmacyDocumentsModule,
     CodeGenerationModule,
+    DrugCatalogModule,
+    IamModule,
   ],
   providers: [
-    {
-      provide: APP_INTERCEPTOR,
-      useClass: TransformResponseInterceptor,
-    },
-    {
-      provide: APP_FILTER,
-      useClass: HttpExceptionFilter,
-    },
-    DrugCatalogModule,
+    // {
+    //   provide: APP_INTERCEPTOR,
+    //   useClass: TransformResponseInterceptor,
+    // },
+    // {
+    //   provide: APP_FILTER,
+    //   useClass: HttpExceptionFilter,
+    // },
+    
 
   ],
 })

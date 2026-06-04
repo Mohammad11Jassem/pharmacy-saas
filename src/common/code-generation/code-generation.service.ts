@@ -16,8 +16,8 @@ import { GenerateCodeOptions } from '../interfaces/generate-code-options.interfa
 export class CodeGenerationService {
   generate(options: GenerateCodeOptions = {}): string {
     const {
-      length = 6,
-      type = CodeType.NUMERIC,
+      length = 12,
+      type = CodeType.ALPHANUMERIC,
       prefix,
       separator = '-',
     } = options;

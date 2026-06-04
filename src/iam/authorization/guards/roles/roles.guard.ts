@@ -65,7 +65,8 @@ export class RolesGuard implements CanActivate {
     const hasRole = requiredRoles.includes(user.accountType);
 
     if (!hasRole) {
-      throw new ForbiddenException('You do not have permission to access this resource');
+      // throw new ForbiddenException('You do not have permission to access this resource');
+      throw new ForbiddenException('ليس لديك صلاحية الوصول إلى هذا المورد');
     }
 
     return true;
