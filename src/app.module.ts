@@ -14,7 +14,6 @@ import { PrismaModule } from './prisma/prisma.module';
 import { DrugCatalogModule } from './modules/drug-catalog/drug-catalog.module';
 import { IamModule } from './iam/iam.module';
 
-
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -28,20 +27,18 @@ import { IamModule } from './iam/iam.module';
     PharmacyDocumentTypesModule,
     PharmacyDocumentsModule,
     CodeGenerationModule,
-    DrugCatalogModule,
     IamModule,
+    DrugCatalogModule,
   ],
   providers: [
-    // {
-    //   provide: APP_INTERCEPTOR,
-    //   useClass: TransformResponseInterceptor,
-    // },
-    // {
-    //   provide: APP_FILTER,
-    //   useClass: HttpExceptionFilter,
-    // },
-    
-
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: TransformResponseInterceptor,
+    },
+    {
+      provide: APP_FILTER,
+      useClass: HttpExceptionFilter,
+    },
   ],
 })
 export class AppModule {}

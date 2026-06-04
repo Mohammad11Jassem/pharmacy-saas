@@ -25,6 +25,7 @@ enum AccountType {
   ADMIN
   PHARMACY_OWNER
   MEDICAL_TEAM
+  PHARMACY
 }
 
 enum UserAccountStatus {
@@ -59,9 +60,8 @@ model UserAccount {
 
   pharmacyOwner PharmacyOwner?
 
-
-  createdAt    DateTime          @default(now()) @map("created_at")
-  updatedAt    DateTime          @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("user_accounts")
 }
@@ -91,7 +91,7 @@ model Pharmacy {
   pharmacistLicenseNo String? @unique @map("pharmacist_license_no")
 
   pharmacyName      String  @map("pharmacy_name")
-  pharmacyCode      String  @unique @map("pharmacy_code")
+  pharmacyCode      String? @unique @map("pharmacy_code")
   contactPhone      String? @map("contact_phone")
   email             String? @unique
   governorate       String?
@@ -162,7 +162,6 @@ model PharmacyDocumentType {
   @@map("pharmacy_document_types")
 }
 
-
 enum DosageFormCategory {
   SOLID
   LIQUID
@@ -170,6 +169,7 @@ enum DosageFormCategory {
   INJECTION
   OTHER
 }
+
 model ActiveIngredient {
   ingredientId   Int     @id @default(autoincrement()) @map("ingredient_id")
   ingredientName String  @unique @map("ingredient_name")
