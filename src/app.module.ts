@@ -12,7 +12,7 @@ import { PharmacyOwnersModule } from './modules/pharmacy-owners/pharmacy-owners.
 import { UsersModule } from './modules/users/users.module';
 import { PrismaModule } from './prisma/prisma.module';
 import { DrugCatalogModule } from './modules/drug-catalog/drug-catalog.module';
-
+import { IamModule } from './iam/iam.module';
 
 @Module({
   imports: [
@@ -27,6 +27,8 @@ import { DrugCatalogModule } from './modules/drug-catalog/drug-catalog.module';
     PharmacyDocumentTypesModule,
     PharmacyDocumentsModule,
     CodeGenerationModule,
+    IamModule,
+    DrugCatalogModule,
   ],
   providers: [
     {
@@ -37,8 +39,6 @@ import { DrugCatalogModule } from './modules/drug-catalog/drug-catalog.module';
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
     },
-    DrugCatalogModule,
-
   ],
 })
 export class AppModule {}

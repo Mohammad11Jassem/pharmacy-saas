@@ -11,6 +11,7 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthenticationGuard } from './guards/authentication/authentication.guard';
 
 import { RolesGuard } from './authorization/guards/roles/roles.guard';
+import { PharmacyStatusGuard } from './authorization/guards/roles/pharmacy-status.guard';
 
 // import { minutes, ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 // import { UserEntity } from 'src/db/entities/user.entity';
@@ -42,12 +43,15 @@ import { RolesGuard } from './authorization/guards/roles/roles.guard';
     {
       provide: APP_GUARD,
       useClass: RolesGuard,
-    },    
+    },
+    {
+      provide: APP_GUARD,
+      useClass: PharmacyStatusGuard,
+    },
     // {
     //   provide: APP_GUARD,
     //   useClass: ThrottlerGuard
     // }
-    
   ],
   controllers: [AuthenticationController],
 })

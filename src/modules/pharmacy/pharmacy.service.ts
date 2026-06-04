@@ -2,9 +2,8 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  NotFoundException,
 } from '@nestjs/common';
-import { CodeType } from '../../common/Enums/code-type.enum';
-import { CodeGenerationService } from '../../common/code-generation/code-generation.service';
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PharmacyOwnersService } from '../pharmacy-owners/pharmacy-owners.service';
@@ -17,31 +16,33 @@ import { UpdatePharmacyDto } from './dto/update-pharmacy.dto';
 import { PharmacyCredentialsService } from '../pharmacy-credentials/pharmacy-credentials.service';
 import { PharmacyAccountResponseMapper } from './mappers/pharmacy-account-response.mapper';
 import { PharmacyAccountResponseDto } from './dto/pharmacy-account-response.dto';
+import { PharmacyStatus } from '../../generated/prisma/enums';
+import { ChangePharmacyStatusDto } from './dto/change-pharmacy-status.dto';
 
 type TransactionClient = Prisma.TransactionClient;
 
-type PharmacyAccountResult = {
-  owner: {
-    userId: number;
-    pharmacyOwnerId: number;
-    fullName: string;
-    email: string;
-    accountType: string;
-    status: string;
-    loginCode: string;
-  };
-  pharmacy: {
-    pharmacyId: number;
-    pharmacyName: string;
-    pharmacyCode: string;
-    status: string;
-  };
-  credential: {
-    pharmacyCredentialId: number;
-    loginCode: string;
-    activatedAt: Date | null;
-  };
-};
+// type PharmacyAccountResult = {
+//   owner: {
+//     userId: number;
+//     pharmacyOwnerId: number;
+//     fullName: string;
+//     email: string;
+//     accountType: string;
+//     status: string;
+//     loginCode: string;
+//   };
+//   pharmacy: {
+//     pharmacyId: number;
+//     pharmacyName: string;
+//     pharmacyCode: string;
+//     status: string;
+//   };
+//   credential: {
+//     pharmacyCredentialId: number;
+//     loginCode: string;
+//     activatedAt: Date | null;
+//   };
+// };
 
 @Injectable()
 export class PharmacyService {
@@ -121,12 +122,11 @@ export class PharmacyService {
   ) {
     await this.ensurePharmacyDataIsUnique(tx, dto);
 
-    return tx.pharmacy.create({
+    const pharmacy = await tx.pharmacy.create({
       data: {
         pharmacyOwnerId,
         pharmacistLicenseNo: dto.pharmacistLicenseNo,
         pharmacyName: dto.pharmacyName,
-        pharmacyCode: dto.pharmacyCode,
         contactPhone: dto.contactPhone,
         email: dto.email,
         governorate: dto.governorate,
@@ -137,22 +137,26 @@ export class PharmacyService {
         openingDate: dto.openingDate ? new Date(dto.openingDate) : undefined,
       },
     });
+
+    const pharmacyCode = this.buildPharmacyCode(pharmacy.pharmacyId);
+
+    return tx.pharmacy.update({
+      where: {
+        pharmacyId: pharmacy.pharmacyId,
+      },
+      data: {
+        pharmacyCode,
+      },
+    });
   }
 
+  private buildPharmacyCode(pharmacyId: number): string {
+    return `PH-${pharmacyId.toString().padStart(3, '0')}`;
+  }
   private async ensurePharmacyDataIsUnique(
     tx: TransactionClient,
     dto: CreatePharmacyDto,
   ) {
-    const existingPharmacyByCode = await tx.pharmacy.findUnique({
-      where: {
-        pharmacyCode: dto.pharmacyCode,
-      },
-    });
-
-    if (existingPharmacyByCode) {
-      throw new ConflictException('Pharmacy code is already used.');
-    }
-
     if (dto.email) {
       const existingPharmacyByEmail = await tx.pharmacy.findUnique({
         where: {
@@ -177,6 +181,76 @@ export class PharmacyService {
           'Pharmacist license number is already used.',
         );
       }
+    }
+  }
+
+  async changeStatus(id: number, dto: ChangePharmacyStatusDto) {
+    const pharmacy = await this.prisma.pharmacy.findUnique({
+      where: {
+        pharmacyId: id,
+      },
+      include: {
+        credential: true,
+        pharmacyOwner: {
+          include: {
+            user: true,
+          },
+        },
+      },
+    });
+
+    if (!pharmacy) {
+      throw new NotFoundException('Pharmacy was not found.');
+    }
+
+    if (pharmacy.status === dto.status) {
+      throw new BadRequestException(`Pharmacy is already ${dto.status}.`);
+    }
+
+    this.validateStatusTransition(pharmacy.status, dto.status);
+
+    return this.prisma.pharmacy.update({
+      where: {
+        pharmacyId: id,
+      },
+      data: {
+        status: dto.status,
+      },
+      include: {
+        credential: true,
+        pharmacyOwner: {
+          include: {
+            user: true,
+          },
+        },
+      },
+    });
+  }
+
+  private validateStatusTransition(
+    currentStatus: PharmacyStatus,
+    nextStatus: PharmacyStatus,
+  ) {
+    const allowedTransitions: Record<PharmacyStatus, PharmacyStatus[]> = {
+      [PharmacyStatus.PENDING]: [
+        PharmacyStatus.ACTIVE,
+        PharmacyStatus.REJECTED,
+        PharmacyStatus.SUSPENDED,
+      ],
+      [PharmacyStatus.ACTIVE]: [PharmacyStatus.SUSPENDED],
+      [PharmacyStatus.SUSPENDED]: [
+        PharmacyStatus.ACTIVE,
+        PharmacyStatus.REJECTED,
+      ],
+      [PharmacyStatus.REJECTED]: [PharmacyStatus.PENDING],
+    };
+
+    const isAllowed = allowedTransitions[currentStatus].includes(nextStatus);
+
+    if (!isAllowed) {
+      throw new BadRequestException(
+        `Cannot change pharmacy status from ${currentStatus} to ${nextStatus}.`,
+      );
     }
   }
 }

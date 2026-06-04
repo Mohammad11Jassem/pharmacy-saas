@@ -15,12 +15,12 @@ export class CreatePharmacyDto {
   @IsNotEmpty()
   pharmacyName: string;
 
-  @ApiProperty({
-    example: 'PH-1001',
-  })
-  @IsString()
-  @IsNotEmpty()
-  pharmacyCode: string;
+  // @ApiProperty({
+  //   example: 'PH-1001',
+  // })
+  // @IsString()
+  // @IsNotEmpty()
+  // pharmacyCode: string;
 
   @ApiPropertyOptional({
     example: 'LIC-12345',
