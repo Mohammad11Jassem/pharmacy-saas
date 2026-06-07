@@ -39,12 +39,20 @@ export class GeneralDrugsService {
 
         return tx.generalDrug.create({
           data: {
-            
+            // dosageFormId: dto.dosageFormId,
+
             drug: {
               create: {
                 source: DrugSource.GENERAL,
               },
             },
+
+            dosageForm: {
+              connect: {
+                dosageFormId: dto.dosageFormId,
+              },
+            },
+
             tradeName: dto.tradeName,
             barcode: dto.barcode,
             unitsPerBox: dto.unitsPerBox,
@@ -52,12 +60,6 @@ export class GeneralDrugsService {
             consumerPrice: dto.consumerPrice,
             isRx: dto.isRx ?? false,
             isActive: dto.isActive ?? true,
-            
-            dosageForm: {
-              connect: {
-                dosageFormId: dto.dosageFormId,
-              },
-            },
 
             ingredients: {
               create: dto.ingredients.map((item) => ({
@@ -312,7 +314,10 @@ export class GeneralDrugsService {
   ) {
     const ingredientIds = ingredients.map((item) => item.ingredientId);
 
-    this.ensureNoDuplicateNumbers(ingredientIds, 'Duplicate ingredientId found');
+    this.ensureNoDuplicateNumbers(
+      ingredientIds,
+      'Duplicate ingredientId found',
+    );
 
     const existingIngredients = await prismaClient.activeIngredient.findMany({
       where: {
@@ -405,3 +410,5 @@ export class GeneralDrugsService {
     };
   }
 }
+
+

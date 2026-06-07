@@ -7,12 +7,14 @@ import { AccountType } from '../../generated/prisma/enums';
 import { Auth } from '../../iam/authentication/decorators/auth.decorator';
 import { AuthType } from '../../iam/authentication/enums/auth-type.enum';
 
+
 @Controller('users')
 export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
-  @Auth(AuthType.None)
+
   // @Roles(AccountType.ADMIN)
+  @Auth(AuthType.None)
   @Post('/add-user')
   async create(@Body() createUserDto: CreateUserDto) {
     return await this.usersService.create(createUserDto);
