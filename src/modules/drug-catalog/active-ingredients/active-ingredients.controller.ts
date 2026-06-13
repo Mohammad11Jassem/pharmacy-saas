@@ -41,16 +41,16 @@ export class ActiveIngredientsController {
     return await this.activeIngredientsService.findOne(id);
   }
 
-  @Post(':id')
-  async update(
-    @Param('id', ParseIntPipe) id: number,
-    @Body() dto: UpdateActiveIngredientDto,
-  ) {
-    return await this.activeIngredientsService.update(id, dto);
-  }
+  // @Post(':id')
+  // async update(
+  //   @Param('id', ParseIntPipe) id: number,
+  //   @Body() dto: UpdateActiveIngredientDto,
+  // ) {
+  //   return await this.activeIngredientsService.update(id, dto);
+  // }
 
-  @Post(':id')
-  async remove(@Param('id', ParseIntPipe) id: number) {
-    return await this.activeIngredientsService.remove(id);
-  }
+  // @Post(':id')
+  // async remove(@Param('id', ParseIntPipe) id: number) {
+  //   return await this.activeIngredientsService.remove(id);
+  // }
 }

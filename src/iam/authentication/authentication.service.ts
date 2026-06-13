@@ -120,6 +120,7 @@ export class AuthenticationService {
       //   accountType: user.accountType,
       //   status: user.status,
       // },
+      accountType: user.accountType,
       tokens,
     };
   }
@@ -508,6 +509,7 @@ export class AuthenticationService {
         pharmacyCode: credential.pharmacy.pharmacyCode,
         status: credential.pharmacy.status,
       },
+      accountType: AccountType.PHARMACY,
       tokens,
     };
   }

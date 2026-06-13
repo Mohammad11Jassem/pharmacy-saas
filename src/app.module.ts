@@ -19,6 +19,7 @@ import { SupplierModule } from './modules/supplier/supplier.module';
 import { SupplierInvoiceModule } from './modules/supplier-invoice/supplier-invoice.module';
 import { SupplierInvoiceItemModule } from './modules/supplier-invoice-item/supplier-invoice-item.module';
 import { BatchModule } from './modules/batch/batch.module';
+import { PharmacyDrugsModule } from './modules/pharmacy-drug/pharmacy-drugs.module';
 
 @Module({
   imports: [
@@ -41,6 +42,7 @@ import { BatchModule } from './modules/batch/batch.module';
     SupplierInvoiceModule,
     SupplierInvoiceItemModule,
     BatchModule,
+    PharmacyDrugsModule,
   ],
   providers: [
     {
