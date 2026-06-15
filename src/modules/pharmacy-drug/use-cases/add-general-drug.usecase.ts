@@ -61,17 +61,14 @@ export class AddGeneralDrugUseCase {
                 dto.sellPart ?? false,
 
               netPrice:
-                dto.netPrice,
+                dto.netPrice ?? generalDrug.netPrice,
 
               consumerPrice:
-                dto.consumerPrice,
+                dto.consumerPrice ?? generalDrug.consumerPrice,
 
               expiryDateAlarm:
-                dto.expiryDateAlarm
-                  ? new Date(
-                      dto.expiryDateAlarm,
-                    )
-                  : undefined, 
+                dto.expiryDateAlarm,
+                 
 
               notes:
                 dto.notes,

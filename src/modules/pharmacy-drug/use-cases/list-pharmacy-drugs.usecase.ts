@@ -146,7 +146,7 @@ export class ListPharmacyDrugsUseCase {
     const hasPreviousPage = dto.page > 1;
 
     return {
-      data: pharmacyDrugs,
+       pharmacyDrugs,
       page: dto.page,
       limit: dto.limit,
       total: totalItems,

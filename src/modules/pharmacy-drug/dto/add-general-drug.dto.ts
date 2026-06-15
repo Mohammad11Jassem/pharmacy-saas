@@ -1,3 +1,4 @@
+import { Type } from 'class-transformer';
 import {
   IsBoolean,
   IsDateString,
@@ -6,6 +7,7 @@ import {
   IsOptional,
   IsPositive,
   IsString,
+  Max,
   MaxLength,
   Min,
 } from 'class-validator';
@@ -39,8 +41,11 @@ export class AddGeneralDrugDto {
   consumerPrice?: number;
 
   @IsOptional()
-  @IsDateString()
-  expiryDateAlarm?: string;
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(3650)
+  expiryDateAlarm?: number;
 
   @IsOptional()
   @IsString()

@@ -107,16 +107,17 @@ export class AddPrivateDrugUseCase {
           });
         }
 
-        return {
-          pharmacyDrugId:
-            pharmacyDrug.pharmacyDrugId,
+        return pharmacyDrug;
+        // return {
+        //   pharmacyDrugId:
+        //     pharmacyDrug.pharmacyDrugId,
 
-          drugId:
-            drug.drugId,
+        //   drugId:
+        //     drug.drugId,
 
-          privateDrugId:
-            privateDrug.privateDrugId,
-        };
+        //   privateDrugId:
+        //     privateDrug.privateDrugId,
+        // };
       },
     );
   }

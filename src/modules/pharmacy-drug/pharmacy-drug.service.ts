@@ -5,6 +5,11 @@ import { AddPrivateDrugDto } from "./dto/add-private-drug.dto";
 import { AddPrivateDrugUseCase } from "./use-cases/add-private-drug.usecase";
 import { ListPharmacyDrugsDto } from "./dto/list-pharmacy-drugs.dto";
 import { ListPharmacyDrugsUseCase } from "./use-cases/list-pharmacy-drugs.usecase";
+import { UpdatePharmacyDrugDto } from "./dto/update-pharmacy-drug.dto";
+import { UpdatePharmacyDrugUseCase } from "./use-cases/update-pharmacy-drug.usecase";
+import { GetPharmacyDrugDetailsUseCase } from "./use-cases/get-pharmacy-drug-details.usecase";
+import { UpdatePrivateDrugUseCase } from "./use-cases/update-private-drug.usecase";
+import { UpdatePrivateDrugDto } from "./dto/update-private-drug.dto";
 
 @Injectable()
 export class PharmacyDrugService {
@@ -17,6 +22,15 @@ export class PharmacyDrugService {
 
     private readonly listPharmacyDrugsUseCase:
       ListPharmacyDrugsUseCase,
+    
+    private readonly updatePharmacyDrugUseCase:
+      UpdatePharmacyDrugUseCase,
+    
+    private readonly getPharmacyDrugDetailsUseCase:
+      GetPharmacyDrugDetailsUseCase,
+
+    private readonly updatePrivateDrugUseCase:
+      UpdatePrivateDrugUseCase,
   ) {}
 
   addGeneralDrug(
@@ -46,6 +60,39 @@ export class PharmacyDrugService {
     return this.listPharmacyDrugsUseCase.execute(
       pharmacyId,
       dto,
+    );
+  }
+
+  updatePharmacyDrug(
+    pharmacyId: number,
+    pharmacyDrugId: number,
+    dto: UpdatePharmacyDrugDto,
+  ) {
+    return this.updatePharmacyDrugUseCase.execute(
+      pharmacyId,
+      pharmacyDrugId,
+      dto,
+    );
+  }
+
+  updatePrivateDrug(
+    pharmacyId: number,
+    pharmacyDrugId: number,
+    dto: UpdatePrivateDrugDto,
+  ) {
+    return this.updatePrivateDrugUseCase.execute(
+      pharmacyId,
+      pharmacyDrugId,
+      dto,
+    );
+  }
+  getPharmacyDrugDetails(
+    pharmacyId: number,
+    pharmacyDrugId: number,
+  ) {
+    return this.getPharmacyDrugDetailsUseCase.execute(
+      pharmacyId,
+      pharmacyDrugId,
     );
   }
 }

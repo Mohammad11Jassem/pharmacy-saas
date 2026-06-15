@@ -388,7 +388,8 @@ model PharmacyDrug {
   netPrice        Decimal?  @map("net_price")       @db.Decimal(12, 2)
   consumerPrice   Decimal?  @map("consumer_price")  @db.Decimal(12, 2)
 
-  expiryDateAlarm DateTime? @map("expiry_date_alarm") @db.Date
+  // expiryDateAlarm DateTime? @map("expiry_date_alarm") @db.Date
+  expiryDateAlarm Int? @default(60) @map("expiry_date_alarm")
   isActive        Boolean   @default(true) @map("is_active")
   notes           String?   @db.Text
 
