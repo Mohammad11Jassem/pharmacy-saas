@@ -8,6 +8,10 @@ import { UpdateCustomerRequestDto } from './dto/update-customer-request.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { GetCustomerRequestsDto } from './dto/get-customer-request.dto';
 import { Prisma } from '../../generated/prisma/client';
+import {
+  getPaginationParams,
+  toPaginatedResult,
+} from '../../common/pagination/pagination.util';
 
 @Injectable()
 export class CustomerRequestService {
@@ -49,7 +53,86 @@ export class CustomerRequestService {
     });
   }
 
+  // async findAll(pharmacyId: number, query: GetCustomerRequestsDto) {
+  //   const where: Prisma.CustomerRequestWhereInput = {
+  //     pharmacyId,
+  //   };
+
+  //   if (
+  //     query.fromDate &&
+  //     query.toDate &&
+  //     new Date(query.fromDate) > new Date(query.toDate)
+  //   ) {
+  //     throw new BadRequestException('fromDate must be before toDate');
+  //   }
+
+  //   if (query.status) {
+  //     where.status = query.status;
+  //   }
+
+  //   if (query.search) {
+  //     where.OR = [
+  //       {
+  //         customerName: {
+  //           contains: query.search,
+  //           mode: 'insensitive',
+  //         },
+  //       },
+  //       {
+  //         customerPhone: {
+  //           contains: query.search,
+  //         },
+  //       },
+  //     ];
+  //   }
+
+  //   if (query.fromDate || query.toDate) {
+  //     where.createdAt = {};
+
+  //     if (query.fromDate) {
+  //       where.createdAt.gte = query.fromDate;
+  //     }
+
+  //     if (query.toDate) {
+  //       where.createdAt.lte = query.toDate;
+  //     }
+  //   }
+
+  //   if (query.pharmacyDrugId) {
+  //     where.items = {
+  //       some: {
+  //         pharmacyDrugId: query.pharmacyDrugId,
+  //       },
+  //     };
+  //   }
+
+  //   return this.prisma.customerRequest.findMany({
+  //     where,
+
+  //     include: {
+  //       items: {
+  //         include: {
+  //           pharmacyDrug: true,
+  //         },
+  //       },
+  //     },
+
+  //     orderBy: {
+  //       createdAt: 'desc',
+  //     },
+
+  //     skip: ((query.page ?? 1) - 1) * (query.limit ?? 20),
+
+  //     take: query.limit ?? 20,
+  //   });
+  // }
+
   async findAll(pharmacyId: number, query: GetCustomerRequestsDto) {
+    const { page, limit, skip, take } = getPaginationParams(
+      query.page,
+      query.limit,
+    );
+
     const where: Prisma.CustomerRequestWhereInput = {
       pharmacyId,
     };
@@ -86,11 +169,11 @@ export class CustomerRequestService {
       where.createdAt = {};
 
       if (query.fromDate) {
-        where.createdAt.gte = query.fromDate;
+        where.createdAt.gte = new Date(query.fromDate);
       }
 
       if (query.toDate) {
-        where.createdAt.lte = query.toDate;
+        where.createdAt.lte = new Date(query.toDate);
       }
     }
 
@@ -102,25 +185,29 @@ export class CustomerRequestService {
       };
     }
 
-    return this.prisma.customerRequest.findMany({
-      where,
-
-      include: {
-        items: {
-          include: {
-            pharmacyDrug: true,
+    const [items, total] = await Promise.all([
+      this.prisma.customerRequest.findMany({
+        where,
+        include: {
+          items: {
+            include: {
+              pharmacyDrug: true,
+            },
           },
         },
-      },
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take,
+      }),
 
-      orderBy: {
-        createdAt: 'desc',
-      },
+      this.prisma.customerRequest.count({
+        where,
+      }),
+    ]);
 
-      skip: ((query.page ?? 1) - 1) * (query.limit ?? 20),
-
-      take: query.limit ?? 20,
-    });
+    return toPaginatedResult(items, total, page, limit);
   }
 
   async findOne(pharmacyId: number, customerRequestId: number) {

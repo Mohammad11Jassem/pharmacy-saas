@@ -15,6 +15,9 @@ import { AddBatchesToSupplierInvoiceDto } from './dto/add-batches-to-supplier-in
 import { CurrentPharmacy } from '../../common/decorators/current-pharmacy.decorator';
 import { Auth } from '../../iam/authentication/decorators/auth.decorator';
 import { AuthType } from '../../iam/authentication/enums/auth-type.enum';
+import { Roles } from '../../iam/authorization/decorators/roles.decorator';
+import { AccountType } from '../../generated/prisma/enums';
+import { AddOpeningStockBatchesDto } from './dto/add-opening-stock-batches.dto';
 
 @Controller('batch')
 export class BatchController {
@@ -51,5 +54,14 @@ export class BatchController {
     @Param('pharmacyDrugId', ParseIntPipe) pharmacyDrugId: number,
   ) {
     return this.batchService.findByPharmacyDrug(pharmacyId, pharmacyDrugId);
+  }
+
+  @Roles(AccountType.PHARMACY)
+  @Post('opening-stock')
+  addOpeningStockBatches(
+    @CurrentPharmacy() pharmacyId: number,
+    @Body() dto: AddOpeningStockBatchesDto,
+  ) {
+    return this.batchService.addOpeningStockBatches(pharmacyId, dto);
   }
 }
