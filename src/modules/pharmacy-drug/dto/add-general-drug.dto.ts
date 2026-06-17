@@ -1,5 +1,7 @@
 import { Type } from 'class-transformer';
 import {
+  ArrayMinSize,
+  IsArray,
   IsBoolean,
   IsDateString,
   IsInt,
@@ -10,7 +12,9 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { CreatePharmacyDrugBatchDto } from './create-pharmacy-drug-batch.dto';
 
 export class AddGeneralDrugDto {
   @IsInt()
@@ -56,4 +60,13 @@ export class AddGeneralDrugDto {
   @IsString()
   @MaxLength(255)
   storageLocation?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({
+    each: true,
+  })
+  @Type(() => CreatePharmacyDrugBatchDto)
+  batches?: CreatePharmacyDrugBatchDto[];
 }

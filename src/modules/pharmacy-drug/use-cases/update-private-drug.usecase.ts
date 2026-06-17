@@ -7,6 +7,8 @@ import {
 import { UnitOfWork } from '../../../common/TransactionWrapper/unit-of-work';
 import { DrugSource } from '../../../generated/prisma/enums';
 import { UpdatePrivateDrugDto } from '../dto/update-private-drug.dto';
+import { UpdatePharmacyDrugUseCase } from './update-pharmacy-drug.usecase';
+import { UpdatePharmacyDrugDto } from '../dto/update-pharmacy-drug.dto';
 
 type PrivateDrugUpdateData = {
   dosageFormId?: number;
@@ -21,6 +23,8 @@ type PrivateDrugUpdateData = {
 export class UpdatePrivateDrugUseCase {
   constructor(
     private readonly unitOfWork: UnitOfWork,
+    private readonly updatePharmacyDrugUseCase: UpdatePharmacyDrugUseCase,
+
   ) {}
 
   async execute(
@@ -69,6 +73,7 @@ export class UpdatePrivateDrugUseCase {
             },
             select: {
               pharmacyDrugId: true,
+              pharmacyId: true,
               drugId: true,
 
               drug: {
@@ -202,7 +207,39 @@ export class UpdatePrivateDrugUseCase {
               },
             },
           });
+        
 
+        let updatedPharmacyDrug=null;
+         const pharmacyDrugDto:
+            UpdatePharmacyDrugDto = {};
+
+        if(dto.isActive!==undefined){
+          pharmacyDrugDto.isActive=dto.isActive;
+        }
+        if(dto.minStockAlert!==undefined){
+          pharmacyDrugDto.minStockAlert=dto.minStockAlert;
+        }
+        if(dto.sellPart!==undefined){
+          pharmacyDrugDto.sellPart=dto.sellPart;
+        }
+        if(dto.consumerPrice!==undefined){
+          pharmacyDrugDto.consumerPrice=dto.consumerPrice;
+        }
+        if(dto.expiryDateAlarm!==undefined){
+          pharmacyDrugDto.expiryDateAlarm=dto.expiryDateAlarm;
+        }
+        if(dto.notes!==undefined){
+          pharmacyDrugDto.notes=dto.notes;
+        }
+        updatedPharmacyDrug =
+            await this.updatePharmacyDrugUseCase
+              .executeWithTx(
+                tx,
+                pharmacyId,
+                pharmacyDrugId,
+                pharmacyDrugDto,
+              );
+        
         return updatedPrivateDrug;
         // return {
         //   pharmacyDrugId:

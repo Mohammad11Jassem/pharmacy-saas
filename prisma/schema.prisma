@@ -293,7 +293,7 @@ model DrugCategory {
   description  String? @db.Text
 
   drugAssignments DrugCategoryAssignment[]
-
+  privateDrugCategoryAssignments PrivateDrugCategoryAssignment[]
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")
 
@@ -309,6 +309,7 @@ model ActiveIngredient {
   description    String? @db.Text
 
   drugIngredients DrugIngredient[]
+  privateDrugIngredients PrivateDrugIngredient[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt      @map("updated_at")
@@ -337,6 +338,23 @@ model DrugIngredient {
   @@map("drug_ingredients")
 }
 
+model PrivateDrugIngredient {
+  privateDrugIngredientId Int @id @default(autoincrement()) @map("private_drug_ingredient_id")
+
+  privateDrugId Int @map("private_drug_id")
+  ingredientId  Int @map("ingredient_id")
+
+  strengthValue Decimal? @map("strength_value")
+  unit          String?
+
+  privateDrug PrivateDrug      @relation(fields: [privateDrugId], references: [privateDrugId], onDelete: Cascade)
+  ingredient  ActiveIngredient @relation(fields: [ingredientId], references: [ingredientId])
+
+  @@unique([privateDrugId, ingredientId])
+  @@index([privateDrugId])
+  @@index([ingredientId])
+  @@map("private_drug_ingredients")
+}
 // ─── DRUG CATEGORY ASSIGNMENT ─────────────────────────────────────────────────
 
 model DrugCategoryAssignment {
@@ -354,7 +372,20 @@ model DrugCategoryAssignment {
   @@map("drug_category_assignments")
 }
 
+model PrivateDrugCategoryAssignment {
+  uniqueId Int @id @default(autoincrement()) @map("unique_id")
 
+  privateDrugId Int @map("private_drug_id")
+  categoryId    Int @map("category_id")
+
+  privateDrug PrivateDrug  @relation(fields: [privateDrugId], references: [privateDrugId], onDelete: Cascade)
+  category    DrugCategory @relation(fields: [categoryId], references: [categoryId])
+
+  @@unique([privateDrugId, categoryId])
+  @@index([privateDrugId])
+  @@index([categoryId])
+  @@map("private_drug_category_assignments")
+}
 // ─── DRUG (SUPERTYPE) ─────────────────────────────────────────────────────────
 model Drug {
   drugId Int        @id @default(autoincrement()) @map("drug_id")
@@ -422,6 +453,8 @@ model PrivateDrug {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  ingredients PrivateDrugIngredient[]
+  categories  PrivateDrugCategoryAssignment[]
   @@map("private_drugs")
 }
 

@@ -2,6 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 import { ListPharmacyDrugsDto } from '../dto/list-pharmacy-drugs.dto';
+import { mapPharmacyDrug } from '../mappers/list-pharmacy-drug.mapper.ts';
+;
 
 @Injectable()
 export class ListPharmacyDrugsUseCase {
@@ -13,31 +15,20 @@ export class ListPharmacyDrugsUseCase {
     pharmacyId: number,
     dto: ListPharmacyDrugsDto,
   ) {
-    const skip = (dto.page - 1) * dto.limit;
+    const page = dto.page ?? 1;
+    const limit = dto.limit ?? 20;
+    const skip = (page - 1) * limit;
 
-    /*
-     * الشرط الأساسي دائمًا هو pharmacyId القادم من التوكن.
-     * لذلك لن تظهر أدوية صيدلية أخرى.
-     */
     const where: Prisma.PharmacyDrugWhereInput = {
       pharmacyId,
     };
 
-    /*
-     * فلترة حسب مصدر الدواء:
-     * GENERAL = دواء عام من Central DB
-     * PRIVATE = دواء خاص بالصيدلية
-     */
     if (dto.source) {
       where.drug = {
         source: dto.source,
       };
     }
 
-    /*
-     * البحث بالاسم في كلا النوعين:
-     * generalDrug و privateDrug
-     */
     if (dto.name) {
       where.OR = [
         {
@@ -67,68 +58,125 @@ export class ListPharmacyDrugsUseCase {
       ];
     }
 
-    /*
-     * نجلب البيانات والعدد الإجمالي في الوقت نفسه.
-     * العدد الإجمالي ضروري لحساب عدد الصفحات.
-     */
     const [pharmacyDrugs, totalItems] =
       await Promise.all([
         this.prisma.pharmacyDrug.findMany({
           where,
 
           skip,
-          take: dto.limit,
+          take: limit,
 
           orderBy: {
             createdAt: 'desc',
           },
 
-        //   select: {
-        //     pharmacyDrugId: true,
-        //     drugId: true,
-        //     minStockAlert: true,
-        //     sellPart: true,
-        //     netPrice: true,
-        //     consumerPrice: true,
-        //     expiryDateAlarm: true,
-        //     isActive: true,
-        //     notes: true,
+          select: {
+            pharmacyDrugId: true,
+            pharmacyId: true,
+            drugId: true,
 
-        //     drugLocations: {
-        //       select: {
-        //         drugLocationId: true,
-        //         storageLocation: true,
-        //       },
-        //     },
+            minStockAlert: true,
+            sellPart: true,
+            netPrice: true,
+            consumerPrice: true,
+            expiryDateAlarm: true,
+            isActive: true,
+            notes: true,
 
-        //     drug: {
-        //       select: {
-        //         source: true,
+            createdAt: true,
+            updatedAt: true,
 
-        //         generalDrug: {
-        //           select: {
-        //             generalDrugId: true,
-        //             tradeName: true,
-        //             barcode: true,
-        //             unitsPerBox: true,
-        //             netPrice: true,
-        //             consumerPrice: true,
-        //             isRx: true,
-        //           },
-        //         },
+            drugLocations: {
+              select: {
+                drugLocationId: true,
+                storageLocation: true,
+              },
+            },
 
-        //         privateDrug: {
-        //           select: {
-        //             privateDrugId: true,
-        //             tradeName: true,
-        //             barcode: true,
-        //             unitsPerBox: true,
-        //             isRx: true,
-        //           },
-        //         },
-        //       },
-        //     },
-        //   },
+            batches: {
+              select: {
+                batchId: true,
+                initialQuantity: true,
+                soldQuantity: true,
+                expiryDate: true,
+                receivedDate: true,
+              },
+            },
+
+            drug: {
+              select: {
+                source: true,
+
+                generalDrug: {
+                  select: {
+                    generalDrugId: true,
+                    tradeName: true,
+                    barcode: true,
+                    unitsPerBox: true,
+                    netPrice: true,
+                    consumerPrice: true,
+                    isRx: true,
+                    isActive: true,
+
+                    dosageForm: {
+                      select: {
+                        dosageFormId: true,
+                        dosageFormName: true,
+                        formCategory: true,
+                      },
+                    },
+
+                    ingredients: {
+                      select: {
+                        drugIngredientId: true,
+                        strengthValue: true,
+                        unit: true,
+
+                        ingredient: {
+                          select: {
+                            ingredientId: true,
+                            ingredientName: true,
+                          },
+                        },
+                      },
+                    },
+
+                    categories: {
+                      select: {
+                        uniqueId: true,
+
+                        category: {
+                          select: {
+                            categoryId: true,
+                            categoryName: true,
+                          },
+                        },
+                      },
+                    },
+                  },
+                },
+
+                privateDrug: {
+                  select: {
+                    privateDrugId: true,
+                    tradeName: true,
+                    barcode: true,
+                    unitsPerBox: true,
+                    isRx: true,
+                    isActive: true,
+
+                    dosageForm: {
+                      select: {
+                        dosageFormId: true,
+                        dosageFormName: true,
+                        formCategory: true,
+                      },
+                    },
+                  },
+                },
+              },
+            },
+          },
         }),
 
         this.prisma.pharmacyDrug.count({
@@ -136,24 +184,28 @@ export class ListPharmacyDrugsUseCase {
         }),
       ]);
 
-    /*
-     * نوحّد شكل النتيجة حتى يحصل Frontend
-     * على شكل واحد سواء كان الدواء GENERAL أو PRIVATE.
-     */
-    
-    const pages = Math.ceil(totalItems / dto.limit);
-    const hasNextPage = dto.page < pages;
-    const hasPreviousPage = dto.page > 1;
+    const mappedPharmacyDrugs =
+      pharmacyDrugs.map(mapPharmacyDrug);
+
+    const pages =
+      Math.ceil(totalItems / limit);
 
     return {
-       pharmacyDrugs,
-      page: dto.page,
-      limit: dto.limit,
-      total: totalItems,
+      pharmacyDrugs:
+        mappedPharmacyDrugs,
+
+      page,
+      limit,
+      total:
+        totalItems,
+
       pages,
-      hasNextPage,
-      hasPreviousPage,
+
+      hasNextPage:
+        page < pages,
+
+      hasPreviousPage:
+        page > 1,
     };
-    
   }
 }
