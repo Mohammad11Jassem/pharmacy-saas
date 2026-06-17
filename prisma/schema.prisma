@@ -41,7 +41,6 @@ enum PharmacyDocumentStatus {
   REJECTED
 }
 
-
 enum DosageFormCategory {
   SOLID
   LIQUID
@@ -49,7 +48,6 @@ enum DosageFormCategory {
   INJECTION
   OTHER
 }
-
 
 enum DrugSource {
   GENERAL
@@ -82,12 +80,11 @@ enum PaymentStatus {
 }
 
 enum SupplierInvoiceStatus {
+  PENDING
+  PARTIALLY_STOCKED
+  STOCKED
+  CANCELLED
 
-    PENDING
-    PARTIALLY_STOCKED
-    STOCKED
-    CANCELLED
-    
   // PENDING
   // APPROVED
   // REJECTED
@@ -140,6 +137,47 @@ enum CustomerRequestItemStatus {
   CANCELLED
 }
 
+enum PharmacyInvoiceType {
+  SALE
+  RETURN
+  DAMAGE
+}
+
+enum PharmacyInvoiceStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}
+
+enum SaleType {
+  NORMAL
+  CUSTOMER_REQUEST
+}
+
+enum UnitType {
+  BOX
+  STRIP
+  TABLET
+}
+
+enum ReturnReason {
+  CUSTOMER_CHANGED_MIND
+  WRONG_ITEM
+  DAMAGED
+  EXPIRED
+  OTHER
+}
+
+enum DamageReason {
+  EXPIRED
+  BROKEN
+  DAMAGED_PACKAGING
+  STORAGE_ISSUE
+  CUSTOMER_RETURN_DAMAGED
+  MANUAL_ADJUSTMENT
+  OTHER
+}
+
 // ─── USER ACCOUNT ─────────────────────────────────────────────────────────────
 
 model UserAccount {
@@ -155,7 +193,7 @@ model UserAccount {
   pharmacyOwner PharmacyOwner?
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("user_accounts")
 }
@@ -173,7 +211,7 @@ model PharmacyOwner {
   pharmacies Pharmacy[]
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("pharmacy_owners")
 }
@@ -186,15 +224,15 @@ model Pharmacy {
   pharmacyOwnerId Int           @map("pharmacy_owner_id")
   pharmacyOwner   PharmacyOwner @relation(fields: [pharmacyOwnerId], references: [pharmacyOwnerId], onDelete: Cascade)
 
-  pharmacistLicenseNo String? @unique @map("pharmacist_license_no")
-  pharmacyName        String  @map("pharmacy_name")
-  pharmacyCode        String? @unique @map("pharmacy_code")
-  contactPhone        String? @map("contact_phone")
-  email               String? @unique
+  pharmacistLicenseNo String?        @unique @map("pharmacist_license_no")
+  pharmacyName        String         @map("pharmacy_name")
+  pharmacyCode        String?        @unique @map("pharmacy_code")
+  contactPhone        String?        @map("contact_phone")
+  email               String?        @unique
   governorate         String?
-  healthDirectorate   String? @map("health_directorate")
-  areaName            String? @map("area_name")
-  addressText         String? @map("address_text")
+  healthDirectorate   String?        @map("health_directorate")
+  areaName            String?        @map("area_name")
+  addressText         String?        @map("address_text")
   status              PharmacyStatus @default(PENDING)
   openingDate         DateTime?      @map("opening_date") @db.Date
 
@@ -205,9 +243,11 @@ model Pharmacy {
   suppliers        Supplier[]
   purchaseOrders   PurchaseOrder[]
   CustomerRequests CustomerRequest[]
+  pharmacyInvoices PharmacyInvoice[]
+  patients         Patient[]
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("pharmacies")
 }
@@ -226,7 +266,7 @@ model PharmacyCredential {
   activatedAt  DateTime? @map("activated_at")
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("pharmacy_credentials")
 }
@@ -247,7 +287,7 @@ model PharmacyDocument {
   status  PharmacyDocumentStatus @default(PENDING)
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("pharmacy_documents")
 }
@@ -264,7 +304,7 @@ model PharmacyDocumentType {
   documents PharmacyDocument[]
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("pharmacy_document_types")
 }
@@ -280,7 +320,7 @@ model DosageForm {
   privateDrugs PrivateDrug[]
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("dosage_forms")
 }
@@ -295,11 +335,10 @@ model DrugCategory {
   drugAssignments DrugCategoryAssignment[]
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("drug_categories")
 }
-
 
 // ─── ACTIVE INGREDIENT ────────────────────────────────────────────────────────
 
@@ -311,7 +350,7 @@ model ActiveIngredient {
   drugIngredients DrugIngredient[]
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("active_ingredients")
 }
@@ -331,7 +370,7 @@ model DrugIngredient {
   unit          String
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@unique([generalDrugId, ingredientId, unit])
   @@map("drug_ingredients")
@@ -353,7 +392,6 @@ model DrugCategoryAssignment {
   @@unique([generalDrugId, categoryId])
   @@map("drug_category_assignments")
 }
-
 
 // ─── DRUG (SUPERTYPE) ─────────────────────────────────────────────────────────
 model Drug {
@@ -437,28 +475,30 @@ model PharmacyDrug {
   drugId Int  @map("drug_id")
   drug   Drug @relation(fields: [drugId], references: [drugId])
 
-  minStockAlert   Int?      @map("min_stock_alert")
-  sellPart        Boolean   @default(false) @map("sell_part")
+  minStockAlert Int?    @map("min_stock_alert")
+  sellPart      Boolean @default(false) @map("sell_part")
 
-  netPrice        Decimal?  @map("net_price")       @db.Decimal(12, 2)
-  consumerPrice   Decimal?  @map("consumer_price")  @db.Decimal(12, 2)
+  netPrice      Decimal? @map("net_price") @db.Decimal(12, 2)
+  consumerPrice Decimal? @map("consumer_price") @db.Decimal(12, 2)
 
   // expiryDateAlarm DateTime? @map("expiry_date_alarm") @db.Date
-  expiryDateAlarm Int? @default(60) @map("expiry_date_alarm")
-  isActive        Boolean   @default(true) @map("is_active")
-  notes           String?   @db.Text
+  expiryDateAlarm Int?    @default(60) @map("expiry_date_alarm")
+  isActive        Boolean @default(true) @map("is_active")
+  notes           String? @db.Text
 
   batches              Batch[]
   purchaseOrderItems   PurchaseOrderItem[]
   supplierInvoiceItems SupplierInvoiceItem[]
   drugLocations        DrugLocation[]
   CustomerRequestItems CustomerRequestItem[]
-
-  @@unique([pharmacyId, drugId])  // a pharmacy can't add the same drug twice
+  saleInvoiceItems     SaleInvoiceItem[]
+  returnInvoiceItems   ReturnInvoiceItem[]
+  damageInvoiceItems   DamageInvoiceItem[]
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@unique([pharmacyId, drugId]) // a pharmacy can't add the same drug twice
   @@map("pharmacy_drugs")
 }
 
@@ -474,8 +514,7 @@ model DrugLocation {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  updatedAt DateTime @updatedAt      @map("updated_at")
-
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("drug_locations")
 }
@@ -491,17 +530,20 @@ model Batch {
   supplierInvoiceItemId Int?                 @map("supplier_invoice_item_id")
   supplierInvoiceItem   SupplierInvoiceItem? @relation(fields: [supplierInvoiceItemId], references: [supplierInvoiceItemId])
 
-
   expiryDate      DateTime?   @map("expiry_date") @db.Date
   initialQuantity Int         @map("initial_quantity")
   soldQuantity    Int         @default(0) @map("sold_quantity")
   receivedDate    DateTime?   @map("received_date") @db.Date
   status          BatchStatus @default(ACTIVE)
 
+  saleInvoiceItemBatches SaleInvoiceItemBatch[]
+  damageInvoiceItems     DamageInvoiceItem[]
+
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-
+  @@index([pharmacyDrugId])
+  @@index([supplierInvoiceItemId])
   @@map("batches")
 }
 
@@ -548,7 +590,7 @@ model SupplierInvoice {
   items SupplierInvoiceItem[]
 
   createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("supplier_invoices")
 }
@@ -567,16 +609,15 @@ model SupplierInvoiceItem {
   quantity     Int
   netUnitPrice Decimal @map("net_unit_price") @db.Decimal(12, 2)
 
-  totalPrice   Decimal @map("total_price")    @db.Decimal(12, 2)
+  totalPrice Decimal @map("total_price") @db.Decimal(12, 2)
 
-  notes        String? @db.Text
+  notes String? @db.Text
 
   batches Batch[]
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  updatedAt DateTime @updatedAt      @map("updated_at")
-
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("supplier_invoice_items")
 }
@@ -589,7 +630,6 @@ model PurchaseOrder {
   pharmacyId Int      @map("pharmacy_id")
   pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [pharmacyId], onDelete: Cascade)
 
-
   supplierId Int
   supplier   Supplier @relation(fields: [supplierId], references: [supplierId])
 
@@ -601,8 +641,7 @@ model PurchaseOrder {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  updatedAt DateTime @updatedAt      @map("updated_at")
-
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("purchase_orders")
 }
@@ -624,7 +663,7 @@ model PurchaseOrderItem {
 
   createdAt DateTime @default(now()) @map("created_at")
 
-  updatedAt DateTime @updatedAt      @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("purchase_order_items")
 }
@@ -679,4 +718,229 @@ model CustomerRequestItem {
   @@index([customerRequestId])
   @@index([pharmacyDrugId])
   @@index([status])
+}
+
+// ───Patient───────────────────────────────────────────────────────────────────────────
+model Patient {
+  patientId Int @id @default(autoincrement()) @map("patient_id")
+
+  pharmacyId Int      @map("pharmacy_id")
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [pharmacyId], onDelete: Cascade)
+
+  fullName   String  @map("full_name")
+  nationalId String? @map("national_id")
+  phone      String?
+
+  invoices PharmacyInvoice[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([pharmacyId])
+  @@index([phone])
+  @@map("patients")
+}
+
+// ─── PHARMACY INVOICE ─────────────────────────────────────────────────────────
+model PharmacyInvoice {
+  pharmacyInvoiceId Int @id @default(autoincrement()) @map("pharmacy_invoice_id")
+
+  pharmacyId Int      @map("pharmacy_id")
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [pharmacyId], onDelete: Cascade)
+
+  patientId Int?     @map("patient_id")
+  patient   Patient? @relation(fields: [patientId], references: [patientId])
+
+  invoiceType PharmacyInvoiceType   @map("invoice_type")
+  invoiceDate DateTime              @default(now()) @map("invoice_date") @db.Date
+  status      PharmacyInvoiceStatus @default(POSTED)
+
+  notes String? @db.Text
+
+  saleInvoice   SaleInvoice?
+  returnInvoice ReturnInvoice?
+  damageInvoice DamageInvoice?
+
+  idempotencyKey String? @map("idempotency_key")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([pharmacyId, idempotencyKey])
+  @@index([pharmacyId])
+  @@index([patientId])
+  @@index([invoiceType])
+  @@index([invoiceDate])
+  @@map("pharmacy_invoices")
+}
+
+// ─── SALE INVOICE ─────────────────────────────────────────────────────────
+model SaleInvoice {
+  saleInvoiceId Int @id @default(autoincrement()) @map("sale_invoice_id")
+
+  pharmacyInvoiceId Int             @unique @map("pharmacy_invoice_id")
+  pharmacyInvoice   PharmacyInvoice @relation(fields: [pharmacyInvoiceId], references: [pharmacyInvoiceId], onDelete: Cascade)
+
+  paymentStatus PaymentStatus @default(PENDING) @map("payment_status")
+  saleType      SaleType      @default(NORMAL) @map("sale_type")
+
+  subtotal    Decimal @db.Decimal(12, 2)
+  discount    Decimal @default(0) @db.Decimal(12, 2)
+  totalAmount Decimal @map("total_amount") @db.Decimal(12, 2)
+
+  items   SaleInvoiceItem[]
+  returns ReturnInvoice[]   @relation("SaleInvoiceReturns")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("sale_invoices")
+}
+
+// ─── SALE INVOICE ITEM ─────────────────────────────────────────────────────────
+model SaleInvoiceItem {
+  saleInvoiceItemId Int @id @default(autoincrement()) @map("sale_invoice_item_id")
+
+  saleInvoiceId Int         @map("sale_invoice_id")
+  saleInvoice   SaleInvoice @relation(fields: [saleInvoiceId], references: [saleInvoiceId], onDelete: Cascade)
+
+  pharmacyDrugId Int          @map("pharmacy_drug_id")
+  pharmacyDrug   PharmacyDrug @relation(fields: [pharmacyDrugId], references: [pharmacyDrugId], onDelete: Restrict)
+
+  unitType         UnitType @map("unit_type")
+  baseQuantity     Int      @map("base_quantity")
+  unitFactorToBase Int      @map("unit_factor_to_base")
+
+  baseUnitPrice   Decimal @map("base_unit_price") @db.Decimal(12, 2)
+  extraPercentage Decimal @default(0) @map("extra_percentage") @db.Decimal(5, 2)
+  finalUnitPrice  Decimal @map("final_unit_price") @db.Decimal(12, 2)
+  totalPrice      Decimal @map("total_price") @db.Decimal(12, 2)
+
+  batchAllocations SaleInvoiceItemBatch[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([saleInvoiceId])
+  @@index([pharmacyDrugId])
+  @@map("sale_invoice_items")
+}
+
+// ─── SALE INVOICE ITEM BATCH ─────────────────────────────────────────────────
+model SaleInvoiceItemBatch {
+  saleInvoiceItemBatchId Int @id @default(autoincrement()) @map("sale_invoice_item_batch_id")
+
+  saleInvoiceItemId Int             @map("sale_invoice_item_id")
+  saleInvoiceItem   SaleInvoiceItem @relation(fields: [saleInvoiceItemId], references: [saleInvoiceItemId], onDelete: Cascade)
+
+  batchId Int   @map("batch_id")
+  batch   Batch @relation(fields: [batchId], references: [batchId], onDelete: Restrict)
+
+  // الكمية الخارجة من هذه الدفعة بالوحدة الأساسية
+  baseQuantity Int @map("base_quantity")
+
+  unitCostAtSale Decimal? @map("unit_cost_at_sale") @db.Decimal(12, 2)
+
+  returnItems ReturnInvoiceItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([saleInvoiceItemId])
+  @@index([batchId])
+  @@map("sale_invoice_item_batches")
+}
+
+// ─── RETURN INVOICE ─────────────────────────────────────────────────────────
+model ReturnInvoice {
+  returnInvoiceId Int @id @default(autoincrement()) @map("return_invoice_id")
+
+  pharmacyInvoiceId Int             @unique @map("pharmacy_invoice_id")
+  pharmacyInvoice   PharmacyInvoice @relation(fields: [pharmacyInvoiceId], references: [pharmacyInvoiceId], onDelete: Cascade)
+
+  referenceSaleInvoiceId Int?         @map("reference_sale_invoice_id")
+  referenceSaleInvoice   SaleInvoice? @relation("SaleInvoiceReturns", fields: [referenceSaleInvoiceId], references: [saleInvoiceId])
+
+  subtotalRefund Decimal @default(0) @map("subtotal_refund") @db.Decimal(12, 2)
+
+  items ReturnInvoiceItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([referenceSaleInvoiceId])
+  @@map("return_invoices")
+}
+
+// ─── RETURN INVOICE ITEM ─────────────────────────────────────────────────────
+model ReturnInvoiceItem {
+  returnInvoiceItemId Int @id @default(autoincrement()) @map("return_invoice_item_id")
+
+  returnInvoiceId Int           @map("return_invoice_id")
+  returnInvoice   ReturnInvoice @relation(fields: [returnInvoiceId], references: [returnInvoiceId], onDelete: Cascade)
+
+  pharmacyDrugId Int          @map("pharmacy_drug_id")
+  pharmacyDrug   PharmacyDrug @relation(fields: [pharmacyDrugId], references: [pharmacyDrugId], onDelete: Restrict)
+
+  saleInvoiceItemBatchId Int                  @map("sale_invoice_item_batch_id")
+  saleInvoiceItemBatch   SaleInvoiceItemBatch @relation(fields: [saleInvoiceItemBatchId], references: [saleInvoiceItemBatchId], onDelete: Restrict)
+
+  unitType         UnitType @map("unit_type")
+  baseQuantity     Int      @map("base_quantity")
+  unitFactorToBase Int      @map("unit_factor_to_base")
+
+  unitPrice  Decimal @map("unit_price") @db.Decimal(12, 2)
+  totalPrice Decimal @map("total_price") @db.Decimal(12, 2)
+
+  returnReason       ReturnReason? @map("return_reason")
+  restockToInventory Boolean       @default(true) @map("restock_to_inventory")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([returnInvoiceId])
+  @@index([pharmacyDrugId])
+  @@index([saleInvoiceItemBatchId])
+  @@map("return_invoice_items")
+}
+
+// ─── DAMAGE INVOICE ─────────────────────────────────────────────────────────
+model DamageInvoice {
+  damageInvoiceId Int @id @default(autoincrement()) @map("damage_invoice_id")
+
+  pharmacyInvoiceId Int             @unique @map("pharmacy_invoice_id")
+  pharmacyInvoice   PharmacyInvoice @relation(fields: [pharmacyInvoiceId], references: [pharmacyInvoiceId], onDelete: Cascade)
+
+  items DamageInvoiceItem[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("damage_invoices")
+}
+
+// ── DAMAGE INVOICE ITEM ─────────────────────────────────────────────────
+model DamageInvoiceItem {
+  damageInvoiceItemId Int @id @default(autoincrement()) @map("damage_invoice_item_id")
+
+  damageInvoiceId Int           @map("damage_invoice_id")
+  damageInvoice   DamageInvoice @relation(fields: [damageInvoiceId], references: [damageInvoiceId], onDelete: Cascade)
+
+  pharmacyDrugId Int          @map("pharmacy_drug_id")
+  pharmacyDrug   PharmacyDrug @relation(fields: [pharmacyDrugId], references: [pharmacyDrugId], onDelete: Restrict)
+
+  batchId Int   @map("batch_id")
+  batch   Batch @relation(fields: [batchId], references: [batchId], onDelete: Restrict)
+
+  unitType         UnitType @map("unit_type")
+  baseQuantity     Int      @map("base_quantity")
+  unitFactorToBase Int      @map("unit_factor_to_base")
+
+  damageReason DamageReason @map("damage_reason")
+  notes        String?      @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([damageInvoiceId])
+  @@index([pharmacyDrugId])
+  @@index([batchId])
+  @@map("damage_invoice_items")
 }

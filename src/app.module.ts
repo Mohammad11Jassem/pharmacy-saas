@@ -22,6 +22,9 @@ import { BatchModule } from './modules/batch/batch.module';
 import { CustomerRequestModule } from './modules/customer-request/customer-request.module';
 import { CustomerRequestItemModule } from './modules/customer-request-item/customer-request-item.module';
 import { PharmacyDrugsModule } from './modules/pharmacy-drug/pharmacy-drugs.module';
+import { SaleInvoiceModule } from './modules/sale-invoice/sale-invoice.module';
+import { SaleInvoiceItemModule } from './modules/sale-invoice-item/sale-invoice-item.module';
+import { PatientModule } from './modules/patient/patient.module';
 
 @Module({
   imports: [
@@ -47,6 +50,9 @@ import { PharmacyDrugsModule } from './modules/pharmacy-drug/pharmacy-drugs.modu
     CustomerRequestModule,
     CustomerRequestItemModule,
     PharmacyDrugsModule,
+    SaleInvoiceModule,
+    SaleInvoiceItemModule,
+    PatientModule,
   ],
   providers: [
     {
