@@ -332,10 +332,10 @@ model DrugCategory {
   categoryName String  @unique @map("category_name")
   description  String? @db.Text
 
-  drugAssignments DrugCategoryAssignment[]
+  drugAssignments                DrugCategoryAssignment[]
   privateDrugCategoryAssignments PrivateDrugCategoryAssignment[]
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt                      DateTime                        @default(now()) @map("created_at")
+  updatedAt                      DateTime                        @updatedAt @map("updated_at")
 
   @@map("drug_categories")
 }
@@ -347,7 +347,7 @@ model ActiveIngredient {
   ingredientName String  @unique @map("ingredient_name")
   description    String? @db.Text
 
-  drugIngredients DrugIngredient[]
+  drugIngredients        DrugIngredient[]
   privateDrugIngredients PrivateDrugIngredient[]
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -394,6 +394,7 @@ model PrivateDrugIngredient {
   @@index([ingredientId])
   @@map("private_drug_ingredients")
 }
+
 // ─── DRUG CATEGORY ASSIGNMENT ─────────────────────────────────────────────────
 
 model DrugCategoryAssignment {
@@ -495,6 +496,7 @@ model PrivateDrug {
 
   ingredients PrivateDrugIngredient[]
   categories  PrivateDrugCategoryAssignment[]
+
   @@map("private_drugs")
 }
 
@@ -528,7 +530,7 @@ model PharmacyDrug {
   CustomerRequestItems CustomerRequestItem[]
   saleInvoiceItems     SaleInvoiceItem[]
   returnInvoiceItems   ReturnInvoiceItem[]
-  damageInvoiceItems   DamageInvoiceItem[]
+  // damageInvoiceItems   DamageInvoiceItem[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -959,15 +961,15 @@ model DamageInvoiceItem {
   damageInvoiceId Int           @map("damage_invoice_id")
   damageInvoice   DamageInvoice @relation(fields: [damageInvoiceId], references: [damageInvoiceId], onDelete: Cascade)
 
-  pharmacyDrugId Int          @map("pharmacy_drug_id")
-  pharmacyDrug   PharmacyDrug @relation(fields: [pharmacyDrugId], references: [pharmacyDrugId], onDelete: Restrict)
+  // pharmacyDrugId Int          @map("pharmacy_drug_id")
+  // pharmacyDrug   PharmacyDrug @relation(fields: [pharmacyDrugId], references: [pharmacyDrugId], onDelete: Restrict)
 
   batchId Int   @map("batch_id")
   batch   Batch @relation(fields: [batchId], references: [batchId], onDelete: Restrict)
 
-  unitType         UnitType @map("unit_type")
-  baseQuantity     Int      @map("base_quantity")
-  unitFactorToBase Int      @map("unit_factor_to_base")
+  // unitType         UnitType @map("unit_type")
+  quantityDamaged Int @map("quantity_damaged")
+  // unitFactorToBase Int      @map("unit_factor_to_base")
 
   damageReason DamageReason @map("damage_reason")
   notes        String?      @db.Text
@@ -975,7 +977,7 @@ model DamageInvoiceItem {
   createdAt DateTime @default(now()) @map("created_at")
 
   @@index([damageInvoiceId])
-  @@index([pharmacyDrugId])
+  // @@index([pharmacyDrugId])
   @@index([batchId])
   @@map("damage_invoice_items")
 }

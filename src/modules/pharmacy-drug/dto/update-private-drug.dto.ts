@@ -1,5 +1,8 @@
 import { Transform, Type } from 'class-transformer';
 import {
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
   IsBoolean,
   IsInt,
   IsNotEmpty,
@@ -10,7 +13,9 @@ import {
   Max,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { DrugIngredientInputDto } from '../../drug-catalog/dto/general-drug.dto';
 
 export class UpdatePrivateDrugDto {
   /*
@@ -105,4 +110,22 @@ export class UpdatePrivateDrugDto {
   @IsString()
   @MaxLength(1000)
   notes?: string | null;
+
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayUnique()
+  @Type(() => Number)
+  @IsInt({ each: true })
+  @IsPositive({ each: true })
+  categoryIds?: number[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayUnique((item: DrugIngredientInputDto) => item.ingredientId)
+  @ValidateNested({ each: true })
+  @Type(() => DrugIngredientInputDto)
+  ingredients?: DrugIngredientInputDto[];
 }

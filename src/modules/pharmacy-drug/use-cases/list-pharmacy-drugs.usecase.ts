@@ -16,7 +16,7 @@ export class ListPharmacyDrugsUseCase {
     dto: ListPharmacyDrugsDto,
   ) {
     const page = dto.page ?? 1;
-    const limit = dto.limit ?? 20;
+    const limit = dto.limit ?? 10;
     const skip = (page - 1) * limit;
 
     const where: Prisma.PharmacyDrugWhereInput = {
@@ -117,7 +117,7 @@ export class ListPharmacyDrugsUseCase {
                     consumerPrice: true,
                     isRx: true,
                     isActive: true,
-
+                    
                     dosageForm: {
                       select: {
                         dosageFormId: true,
@@ -172,6 +172,7 @@ export class ListPharmacyDrugsUseCase {
                         formCategory: true,
                       },
                     },
+                    
                   },
                 },
               },

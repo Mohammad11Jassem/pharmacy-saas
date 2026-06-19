@@ -119,7 +119,8 @@ export function mapPharmacyDrug(pharmacyDrug: ListPharmacyDrugPayload) {
 
     stock: {
       availableQuantity,
-      availableQuantityText: `${availableQuantity} عبوة`,
+      // unitsPerBox ? Math.floor(availableQuantity / unitsPerBox) : availableQuantity,
+      availableQuantityText: `${availableQuantity} عبوة`, //unitsPerBox ? `${Math.floor(availableQuantity / unitsPerBox)} عبوة` : `${availableQuantity} عبوة`,
       minStockAlert,
       isLowStock,
       isOutOfStock,
