@@ -6,6 +6,8 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { PharmacyService } from './pharmacy.service';
 import { CreatePharmacyAccountDto } from './dto/create-pharmacy-account.dto';
@@ -17,6 +19,8 @@ import { AuthType } from '../../iam/authentication/enums/auth-type.enum';
 import { ChangePharmacyStatusDto } from './dto/change-pharmacy-status.dto';
 import { Roles } from '../../iam/authorization/decorators/roles.decorator';
 import { AccountType } from '../../generated/prisma/enums';
+import { ListPharmaciesQueryDto } from './dto/list-pharmacies-query.dto';
+import { UpdatePharmacyDto } from './dto/update-pharmacy.dto';
 
 @ApiTags('Pharmacy')
 @Controller('pharmacy')
@@ -38,11 +42,36 @@ export class PharmacyController {
   }
 
   // @Auth(AuthType.None)
-  // @Roles(AccountType.ADMIN)
+  @Roles(AccountType.ADMIN)
   @Patch(':id/status')
   @Roles(AccountType.ADMIN)
   @ResponseMessage('Pharmacy status changed successfully')
   changeStatus(@Param('id') id: string, @Body() dto: ChangePharmacyStatusDto) {
     return this.pharmacyService.changeStatus(+id, dto);
+  }
+
+  // @Auth(AuthType.None)
+  @Roles(AccountType.ADMIN)
+  @Get('get-all')
+   async findAll(
+    @Query() query: ListPharmaciesQueryDto,
+  ) {
+    return await this.pharmacyService.findAll(query);
+  }
+
+  @Auth(AuthType.None)
+  // @Roles(AccountType.ADMIN)
+  @Post('update/:pharmacyId')
+  async update(
+    @Param('pharmacyId', ParseIntPipe)
+    pharmacyId: number,
+
+    @Body()
+    dto: UpdatePharmacyDto,
+  ) {
+    return this.pharmacyService.update(
+      pharmacyId,
+      dto,
+    );
   }
 }
