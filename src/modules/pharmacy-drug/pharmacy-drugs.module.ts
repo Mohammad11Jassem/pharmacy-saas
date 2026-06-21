@@ -8,11 +8,11 @@ import { ListPharmacyDrugsUseCase } from './use-cases/list-pharmacy-drugs.usecas
 import { UpdatePharmacyDrugUseCase } from './use-cases/update-pharmacy-drug.usecase';
 import { GetPharmacyDrugDetailsUseCase } from './use-cases/get-pharmacy-drug-details.usecase';
 import { UpdatePrivateDrugUseCase } from './use-cases/update-private-drug.usecase';
+import { GetPharmacyDrugSaleUnitsUseCase } from './use-cases/get-pharmacy-drug-sale-units.usecase';
+import { ListAvailableBatchesUseCase } from './use-cases/list-available-batches.usecase';
 
 @Module({
-  controllers: [
-    PharmacyDrugsController,
-  ],
+  controllers: [PharmacyDrugsController],
 
   providers: [
     PharmacyDrugService,
@@ -23,7 +23,8 @@ import { UpdatePrivateDrugUseCase } from './use-cases/update-private-drug.usecas
     UpdatePharmacyDrugUseCase,
     GetPharmacyDrugDetailsUseCase,
     UpdatePrivateDrugUseCase,
-
+    GetPharmacyDrugSaleUnitsUseCase,
+    ListAvailableBatchesUseCase,
   ],
 })
 export class PharmacyDrugsModule {}

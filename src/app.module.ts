@@ -25,6 +25,8 @@ import { PharmacyDrugsModule } from './modules/pharmacy-drug/pharmacy-drugs.modu
 import { SaleInvoiceModule } from './modules/sale-invoice/sale-invoice.module';
 import { SaleInvoiceItemModule } from './modules/sale-invoice-item/sale-invoice-item.module';
 import { PatientModule } from './modules/patient/patient.module';
+import { ReturnInvoiceModule } from './modules/return-invoice/return-invoice.module';
+import { ReturnInvoiceItemModule } from './modules/return-invoice-item/return-invoice-item.module';
 
 @Module({
   imports: [
@@ -53,6 +55,8 @@ import { PatientModule } from './modules/patient/patient.module';
     SaleInvoiceModule,
     SaleInvoiceItemModule,
     PatientModule,
+    ReturnInvoiceModule,
+    ReturnInvoiceItemModule,
   ],
   providers: [
     {

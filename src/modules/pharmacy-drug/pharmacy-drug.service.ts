@@ -1,66 +1,49 @@
-import { Injectable } from "@nestjs/common";
-import { AddGeneralDrugUseCase } from "./use-cases/add-general-drug.usecase";
-import { AddGeneralDrugDto } from "./dto/add-general-drug.dto";
-import { AddPrivateDrugDto } from "./dto/add-private-drug.dto";
-import { AddPrivateDrugUseCase } from "./use-cases/add-private-drug.usecase";
-import { ListPharmacyDrugsDto } from "./dto/list-pharmacy-drugs.dto";
-import { ListPharmacyDrugsUseCase } from "./use-cases/list-pharmacy-drugs.usecase";
-import { UpdatePharmacyDrugDto } from "./dto/update-pharmacy-drug.dto";
-import { UpdatePharmacyDrugUseCase } from "./use-cases/update-pharmacy-drug.usecase";
-import { GetPharmacyDrugDetailsUseCase } from "./use-cases/get-pharmacy-drug-details.usecase";
-import { UpdatePrivateDrugUseCase } from "./use-cases/update-private-drug.usecase";
-import { UpdatePrivateDrugDto } from "./dto/update-private-drug.dto";
+import { Injectable } from '@nestjs/common';
+import { AddGeneralDrugUseCase } from './use-cases/add-general-drug.usecase';
+import { AddGeneralDrugDto } from './dto/add-general-drug.dto';
+import { AddPrivateDrugDto } from './dto/add-private-drug.dto';
+import { AddPrivateDrugUseCase } from './use-cases/add-private-drug.usecase';
+import { ListPharmacyDrugsDto } from './dto/list-pharmacy-drugs.dto';
+import { ListPharmacyDrugsUseCase } from './use-cases/list-pharmacy-drugs.usecase';
+import { UpdatePharmacyDrugDto } from './dto/update-pharmacy-drug.dto';
+import { UpdatePharmacyDrugUseCase } from './use-cases/update-pharmacy-drug.usecase';
+import { GetPharmacyDrugDetailsUseCase } from './use-cases/get-pharmacy-drug-details.usecase';
+import { UpdatePrivateDrugUseCase } from './use-cases/update-private-drug.usecase';
+import { UpdatePrivateDrugDto } from './dto/update-private-drug.dto';
+import { GetPharmacyDrugSaleUnitsUseCase } from './use-cases/get-pharmacy-drug-sale-units.usecase';
+import { ListAvailableBatchesQueryDto } from './dto/list-available-batches-query.dto';
+import { ListAvailableBatchesUseCase } from './use-cases/list-available-batches.usecase';
 
 @Injectable()
 export class PharmacyDrugService {
   constructor(
-    private readonly addGeneralDrugUseCase:
-      AddGeneralDrugUseCase,
+    private readonly addGeneralDrugUseCase: AddGeneralDrugUseCase,
 
-    private readonly addPrivateDrugUseCase:
-      AddPrivateDrugUseCase,
+    private readonly addPrivateDrugUseCase: AddPrivateDrugUseCase,
 
-    private readonly listPharmacyDrugsUseCase:
-      ListPharmacyDrugsUseCase,
+    private readonly listPharmacyDrugsUseCase: ListPharmacyDrugsUseCase,
+
+    private readonly updatePharmacyDrugUseCase: UpdatePharmacyDrugUseCase,
+
+    private readonly getPharmacyDrugDetailsUseCase: GetPharmacyDrugDetailsUseCase,
+
+    private readonly updatePrivateDrugUseCase: UpdatePrivateDrugUseCase,
+
+    private readonly getPharmacyDrugSaleUnitsUseCase: GetPharmacyDrugSaleUnitsUseCase,
     
-    private readonly updatePharmacyDrugUseCase:
-      UpdatePharmacyDrugUseCase,
-    
-    private readonly getPharmacyDrugDetailsUseCase:
-      GetPharmacyDrugDetailsUseCase,
-
-    private readonly updatePrivateDrugUseCase:
-      UpdatePrivateDrugUseCase,
+    private readonly listAvailableBatchesUseCase: ListAvailableBatchesUseCase,
   ) {}
 
-  addGeneralDrug(
-    pharmacyId: number,
-    dto: AddGeneralDrugDto,
-  ) {
-    return this.addGeneralDrugUseCase.execute(
-      pharmacyId,
-      dto,
-    );
+  addGeneralDrug(pharmacyId: number, dto: AddGeneralDrugDto) {
+    return this.addGeneralDrugUseCase.execute(pharmacyId, dto);
   }
 
-  addPrivateDrug(
-    pharmacyId: number,
-    dto: AddPrivateDrugDto,
-  ) {
-    return this.addPrivateDrugUseCase.execute(
-      pharmacyId,
-      dto,
-    );
+  addPrivateDrug(pharmacyId: number, dto: AddPrivateDrugDto) {
+    return this.addPrivateDrugUseCase.execute(pharmacyId, dto);
   }
 
-  listPharmacyDrugs(
-    pharmacyId: number,
-    dto: ListPharmacyDrugsDto,
-  ) {
-    return this.listPharmacyDrugsUseCase.execute(
-      pharmacyId,
-      dto,
-    );
+  listPharmacyDrugs(pharmacyId: number, dto: ListPharmacyDrugsDto) {
+    return this.listPharmacyDrugsUseCase.execute(pharmacyId, dto);
   }
 
   updatePharmacyDrug(
@@ -86,13 +69,27 @@ export class PharmacyDrugService {
       dto,
     );
   }
-  getPharmacyDrugDetails(
-    pharmacyId: number,
-    pharmacyDrugId: number,
-  ) {
+  getPharmacyDrugDetails(pharmacyId: number, pharmacyDrugId: number) {
     return this.getPharmacyDrugDetailsUseCase.execute(
       pharmacyId,
       pharmacyDrugId,
+    );
+  }
+  getPharmacyDrugSaleUnits(pharmacyId: number, pharmacyDrugId: number) {
+    return this.getPharmacyDrugSaleUnitsUseCase.execute(
+      pharmacyId,
+      pharmacyDrugId,
+    );
+  }
+  findAvailableBatches(
+    pharmacyId: number,
+    pharmacyDrugId: number,
+    query: ListAvailableBatchesQueryDto,
+  ) {
+    return this.listAvailableBatchesUseCase.execute(
+      pharmacyId,
+      pharmacyDrugId,
+      query,
     );
   }
 }

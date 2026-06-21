@@ -7,6 +7,7 @@ import {
   Param,
   Delete,
   ParseIntPipe,
+  Query,
 } from '@nestjs/common';
 import { BatchService } from './batch.service';
 import { CreateSupplierInvoiceItemBatchDto } from './dto/create-batch.dto';
@@ -18,7 +19,6 @@ import { AuthType } from '../../iam/authentication/enums/auth-type.enum';
 import { Roles } from '../../iam/authorization/decorators/roles.decorator';
 import { AccountType } from '../../generated/prisma/enums';
 import { AddOpeningStockBatchesDto } from './dto/add-opening-stock-batches.dto';
-
 @Controller('batch')
 export class BatchController {
   constructor(private readonly batchService: BatchService) {}
