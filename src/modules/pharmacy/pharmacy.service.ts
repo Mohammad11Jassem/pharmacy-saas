@@ -18,6 +18,7 @@ import { PharmacyAccountResponseMapper } from './mappers/pharmacy-account-respon
 import { PharmacyAccountResponseDto } from './dto/pharmacy-account-response.dto';
 import { PharmacyStatus } from '../../generated/prisma/enums';
 import { ChangePharmacyStatusDto } from './dto/change-pharmacy-status.dto';
+import { ListPharmaciesQueryDto } from './dto/list-pharmacies-query.dto';
 
 type TransactionClient = Prisma.TransactionClient;
 
@@ -252,5 +253,271 @@ export class PharmacyService {
         `Cannot change pharmacy status from ${currentStatus} to ${nextStatus}.`,
       );
     }
+  }
+
+  async findAll(dto: ListPharmaciesQueryDto) {
+    const page = dto.page ?? 1;
+    const limit = dto.limit ?? 10;
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.PharmacyWhereInput = {};
+
+    if (dto.name) {
+      where.pharmacyName = {
+        contains: dto.name,
+        mode: 'insensitive',
+      };
+    }
+
+    const [total, pharmacies] =
+      await this.prisma.$transaction([
+        this.prisma.pharmacy.count({
+          where,
+        }),
+
+        this.prisma.pharmacy.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: {
+            createdAt: 'desc',
+          },
+          select: {
+            pharmacyId: true,
+            pharmacyName: true,
+            // pharmacyCode: true,
+            // pharmacistLicenseNo: true,
+            // contactPhone: true,
+            email: true,
+            // governorate: true,
+            // healthDirectorate: true,
+            // areaName: true,
+            // addressText: true,
+            status: true,
+            openingDate: true,
+            // createdAt: true,
+            // updatedAt: true,
+
+            pharmacyOwner: {
+              select: {
+                pharmacyOwnerId: true,
+                // nationalId: true,
+
+                user: {
+                  select: {
+                    userId: true,
+                    fullName: true,
+                    email: true,
+                    phone: true,
+                    // status: true,
+                  },
+                },
+              },
+            },
+          },
+        }),
+      ]);
+      const mappedPharmacies = pharmacies.map((pharmacy) => ({
+      ...pharmacy,
+
+      /*
+      * Placeholder until subscription tables are added.
+      * Later this value will be calculated from pharmacy subscriptions.
+      */
+      hasActiveSubscription: false,
+    }));
+    const totalPages = Math.ceil(total / limit);
+
+    return {
+      data: mappedPharmacies,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages,
+        hasNextPage: page < totalPages,
+        hasPreviousPage: page > 1,
+      },
+    };
+  }
+
+   async update(
+    pharmacyId: number,
+    dto: UpdatePharmacyDto,
+  ) {
+    const hasPharmacistLicenseNo =
+      dto.pharmacistLicenseNo !== undefined;
+
+    const hasPharmacyName =
+      dto.pharmacyName !== undefined;
+
+    const hasContactPhone =
+      dto.contactPhone !== undefined;
+
+    const hasGovernorate =
+      dto.governorate !== undefined;
+
+    const hasHealthDirectorate =
+      dto.healthDirectorate !== undefined;
+
+    const hasAreaName =
+      dto.areaName !== undefined;
+
+    const hasAddressText =
+      dto.addressText !== undefined;
+
+    const hasStatus =
+      dto.status !== undefined;
+
+    const hasOpeningDate =
+      dto.openingDate !== undefined;
+
+    const hasAnyEditableField =
+      hasPharmacistLicenseNo ||
+      hasPharmacyName ||
+      hasContactPhone ||
+      hasGovernorate ||
+      hasHealthDirectorate ||
+      hasAreaName ||
+      hasAddressText ||
+      hasStatus ||
+      hasOpeningDate;
+
+    if (!hasAnyEditableField) {
+      throw new BadRequestException(
+        'At least one editable field is required',
+      );
+    }
+
+    const pharmacy =
+      await this.prisma.pharmacy.findUnique({
+        where: {
+          pharmacyId,
+        },
+        select: {
+          pharmacyId: true,
+        },
+      });
+
+    if (!pharmacy) {
+      throw new NotFoundException(
+        'Pharmacy not found',
+      );
+    }
+
+    if (
+      hasPharmacistLicenseNo &&
+      dto.pharmacistLicenseNo !== null
+    ) {
+      const licenseExists =
+        await this.prisma.pharmacy.findFirst({
+          where: {
+            pharmacistLicenseNo:
+              dto.pharmacistLicenseNo,
+
+            pharmacyId: {
+              not: pharmacyId,
+            },
+          },
+          select: {
+            pharmacyId: true,
+          },
+        });
+
+      if (licenseExists) {
+        throw new ConflictException(
+          'Pharmacist license number already exists',
+        );
+      }
+    }
+
+    const data: Prisma.PharmacyUpdateInput = {};
+
+    if (hasPharmacistLicenseNo) {
+      data.pharmacistLicenseNo =
+        dto.pharmacistLicenseNo;
+    }
+
+    if (hasPharmacyName) {
+      data.pharmacyName =
+        dto.pharmacyName;
+    }
+
+    if (hasContactPhone) {
+      data.contactPhone =
+        dto.contactPhone;
+    }
+
+    if (hasGovernorate) {
+      data.governorate =
+        dto.governorate;
+    }
+
+    if (hasHealthDirectorate) {
+      data.healthDirectorate =
+        dto.healthDirectorate;
+    }
+
+    if (hasAreaName) {
+      data.areaName =
+        dto.areaName;
+    }
+
+    if (hasAddressText) {
+      data.addressText =
+        dto.addressText;
+    }
+
+    if (hasStatus) {
+      data.status =
+        dto.status;
+    }
+
+    if (hasOpeningDate) {
+      data.openingDate =
+        dto.openingDate === null
+          ? null
+          : new Date(dto.openingDate);
+    }
+
+    return this.prisma.pharmacy.update({
+      where: {
+        pharmacyId,
+      },
+      data,
+      select: {
+        pharmacyId: true,
+        pharmacyName: true,
+        pharmacyCode: true,
+        pharmacistLicenseNo: true,
+        contactPhone: true,
+        email: true,
+        governorate: true,
+        healthDirectorate: true,
+        areaName: true,
+        addressText: true,
+        status: true,
+        openingDate: true,
+        createdAt: true,
+        updatedAt: true,
+
+        pharmacyOwner: {
+          select: {
+            pharmacyOwnerId: true,
+            nationalId: true,
+
+            user: {
+              select: {
+                userId: true,
+                fullName: true,
+                email: true,
+                phone: true,
+                status: true,
+              },
+            },
+          },
+        },
+      },
+    });
   }
 }

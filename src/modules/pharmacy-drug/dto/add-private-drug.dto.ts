@@ -1,4 +1,7 @@
 import {
+  ArrayMinSize,
+  ArrayUnique,
+  IsArray,
   IsBoolean,
   IsInt,
   IsNumber,
@@ -7,7 +10,11 @@ import {
   IsString,
   MaxLength,
   Min,
+  ValidateNested,
 } from 'class-validator';
+import { CreatePharmacyDrugBatchDto } from './create-pharmacy-drug-batch.dto';
+import { Type } from 'class-transformer';
+import { DrugIngredientInputDto } from '../../drug-catalog/dto/general-drug.dto';
 
 export class AddPrivateDrugDto {
   @IsInt()
@@ -62,4 +69,38 @@ export class AddPrivateDrugDto {
   @IsString()
   @MaxLength(255)
   storageLocation?: string;
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ValidateNested({
+    each: true,
+  })
+  @Type(() => CreatePharmacyDrugBatchDto)
+  batches?: CreatePharmacyDrugBatchDto[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayUnique()
+  @IsInt({
+    each: true,
+  })
+  @IsPositive({
+    each: true,
+  })
+  categoryIds?: number[];
+
+  @IsOptional()
+  @IsArray()
+  @ArrayMinSize(1)
+  @ArrayUnique(
+    (item: DrugIngredientInputDto) =>
+      item.ingredientId,
+  )
+  @ValidateNested({
+    each: true,
+  })
+  @Type(() => DrugIngredientInputDto)
+  ingredients?: DrugIngredientInputDto[];
 }

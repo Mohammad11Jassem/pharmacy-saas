@@ -2,6 +2,7 @@ import { ConflictException, Injectable, NotFoundException } from "@nestjs/common
 import { PrismaService } from "../../../prisma/prisma.service";
 import { AddGeneralDrugDto } from "../dto/add-general-drug.dto";
 import { UnitOfWork } from "../../../common/TransactionWrapper/unit-of-work";
+import { createPharmacyDrugBatchesWithTx } from "../helpers/create-pharmacy-drug-batches.helper";
 
 @Injectable()
 export class AddGeneralDrugUseCase {
@@ -86,8 +87,16 @@ export class AddGeneralDrugUseCase {
             },
           });
         }
-
-        return pharmacyDrug;
+        const batches =
+          await createPharmacyDrugBatchesWithTx(
+            tx,
+            pharmacyDrug.pharmacyDrugId,
+            dto.batches,
+          );
+        return {
+          pharmacyDrug,
+          batches,
+        };
       },
     );
   }

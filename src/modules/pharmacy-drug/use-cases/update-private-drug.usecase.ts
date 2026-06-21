@@ -7,6 +7,8 @@ import {
 import { UnitOfWork } from '../../../common/TransactionWrapper/unit-of-work';
 import { DrugSource } from '../../../generated/prisma/enums';
 import { UpdatePrivateDrugDto } from '../dto/update-private-drug.dto';
+import { UpdatePharmacyDrugUseCase } from './update-pharmacy-drug.usecase';
+import { UpdatePharmacyDrugDto } from '../dto/update-pharmacy-drug.dto';
 
 type PrivateDrugUpdateData = {
   dosageFormId?: number;
@@ -21,6 +23,8 @@ type PrivateDrugUpdateData = {
 export class UpdatePrivateDrugUseCase {
   constructor(
     private readonly unitOfWork: UnitOfWork,
+    private readonly updatePharmacyDrugUseCase: UpdatePharmacyDrugUseCase,
+
   ) {}
 
   async execute(
@@ -30,32 +34,38 @@ export class UpdatePrivateDrugUseCase {
   ) {
     return this.unitOfWork.execute(
       async (tx) => {
-        const hasDosageFormId =
-          dto.dosageFormId !== undefined;
+        const hasDosageFormId = dto.dosageFormId !== undefined;
+        const hasTradeName = dto.tradeName !== undefined;
+        const hasBarcode = dto.barcode !== undefined;
+        const hasUnitsPerBox = dto.unitsPerBox !== undefined;
+        const hasIsRx = dto.isRx !== undefined;
+        const hasIsActive = dto.isActive !== undefined;
 
-        const hasTradeName =
-          dto.tradeName !== undefined;
+        const hasMinStockAlert = dto.minStockAlert !== undefined;
+        const hasSellPart = dto.sellPart !== undefined;
+        const hasConsumerPrice = dto.consumerPrice !== undefined;
+        const hasExpiryDateAlarm = dto.expiryDateAlarm !== undefined;
+        const hasNotes = dto.notes !== undefined;
 
-        const hasBarcode =
-          dto.barcode !== undefined;
+        const hasCategoryIds = dto.categoryIds !== undefined;
+        const hasIngredients = dto.ingredients !== undefined;
 
-        const hasUnitsPerBox =
-          dto.unitsPerBox !== undefined;
+        const hasAnyEditableField =
+          hasDosageFormId ||
+          hasTradeName ||
+          hasBarcode ||
+          hasUnitsPerBox ||
+          hasIsRx ||
+          hasIsActive ||
+          hasMinStockAlert ||
+          hasSellPart ||
+          hasConsumerPrice ||
+          hasExpiryDateAlarm ||
+          hasNotes ||
+          hasCategoryIds ||
+          hasIngredients;
 
-        const hasIsRx =
-          dto.isRx !== undefined;
-
-        const hasIsActive =
-          dto.isActive !== undefined;
-
-        if (
-          !hasDosageFormId &&
-          !hasTradeName &&
-          !hasBarcode &&
-          !hasUnitsPerBox &&
-          !hasIsRx &&
-          !hasIsActive
-        ) {
+        if (!hasAnyEditableField) {
           throw new BadRequestException(
             'At least one editable field is required',
           );
@@ -69,6 +79,7 @@ export class UpdatePrivateDrugUseCase {
             },
             select: {
               pharmacyDrugId: true,
+              pharmacyId: true,
               drugId: true,
 
               drug: {
@@ -140,7 +151,47 @@ export class UpdatePrivateDrugUseCase {
             );
           }
         }
+        if (hasCategoryIds) {
+          const categories = await tx.drugCategory.findMany({
+            where: {
+              categoryId: {
+                in: dto.categoryIds,
+              },
+            },
+            select: {
+              categoryId: true,
+            },
+          });
 
+          if (categories.length !== dto.categoryIds!.length) {
+            throw new NotFoundException(
+              'One or more categories were not found',
+            );
+          }
+        }
+
+        if (hasIngredients) {
+          const ingredientIds = dto.ingredients!.map(
+            (item) => item.ingredientId,
+          );
+
+          const ingredients = await tx.drugIngredient.findMany({
+            where: {
+              ingredientId: {
+                in: ingredientIds,
+              },
+            },
+            select: {
+              ingredientId: true,
+            },
+          });
+
+          if (ingredients.length !== ingredientIds.length) {
+            throw new NotFoundException(
+              'One or more ingredients were not found',
+            );
+          }
+        }
         const data: PrivateDrugUpdateData = {};
 
         if (hasDosageFormId) {
@@ -172,7 +223,7 @@ export class UpdatePrivateDrugUseCase {
           data.isActive =
             dto.isActive;
         }
-
+        
         const updatedPrivateDrug =
           await tx.privateDrug.update({
             where: {
@@ -202,7 +253,80 @@ export class UpdatePrivateDrugUseCase {
               },
             },
           });
+        
 
+        let updatedPharmacyDrug=null;
+        const pharmacyDrugDto: UpdatePharmacyDrugDto = {};
+
+        if(dto.isActive!==undefined){
+          pharmacyDrugDto.isActive=dto.isActive;
+        }
+        if(dto.minStockAlert!==undefined){
+          pharmacyDrugDto.minStockAlert=dto.minStockAlert;
+        }
+        if(dto.sellPart!==undefined){
+          pharmacyDrugDto.sellPart=dto.sellPart;
+        }
+        if(dto.consumerPrice!==undefined){
+          pharmacyDrugDto.consumerPrice=dto.consumerPrice;
+        }
+        if(dto.expiryDateAlarm!==undefined){
+          pharmacyDrugDto.expiryDateAlarm=dto.expiryDateAlarm;
+        }
+        if(dto.notes!==undefined){
+          pharmacyDrugDto.notes=dto.notes;
+        }
+
+        if (Object.keys(pharmacyDrugDto).length > 0) {
+          updatedPharmacyDrug =
+            await this.updatePharmacyDrugUseCase.executeWithTx(
+              tx,
+              pharmacyId,
+              pharmacyDrugId,
+              pharmacyDrugDto,
+            );
+        }
+        
+        if (hasCategoryIds) {
+          await tx.privateDrugCategoryAssignment.deleteMany({
+            where: {
+              privateDrugId:
+                pharmacyDrug.drug.privateDrug
+                  .privateDrugId,
+            },
+          });
+
+          await tx.privateDrugCategoryAssignment.createMany({
+            data: dto.categoryIds!.map((categoryId) => ({
+              privateDrugId:
+                pharmacyDrug.drug.privateDrug
+                  .privateDrugId,
+              categoryId,
+            })),
+          });
+        }
+
+        if (hasIngredients) {
+          await tx.privateDrugIngredient.deleteMany({
+            where: {
+              privateDrugId:
+                pharmacyDrug.drug.privateDrug
+                  .privateDrugId,
+            },
+          });
+
+          await tx.privateDrugIngredient.createMany({
+            data: dto.ingredients!.map((ingredient) => ({
+              privateDrugId:
+                pharmacyDrug.drug.privateDrug
+                  .privateDrugId,
+              ingredientId: ingredient.ingredientId,
+              strengthValue: ingredient.strengthValue,
+              unit: ingredient.unit.trim(),
+            })),
+          });
+        }
+        
         return updatedPrivateDrug;
         // return {
         //   pharmacyDrugId:
