@@ -279,11 +279,11 @@ export class SupplierInvoiceService {
       },
       include: {
         supplier: true,
-        items: {
-          include: {
-            pharmacyDrug: true,
-          },
-        },
+        // items: {
+        //   include: {
+        //     pharmacyDrug: true,
+        //   },
+        // },
       },
       orderBy: {
         createdAt: 'desc',
