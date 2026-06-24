@@ -6,6 +6,8 @@ import {
   Patch,
   Param,
   Delete,
+  Query,
+  ParseIntPipe,
 } from '@nestjs/common';
 import { SaleInvoiceService } from './sale-invoice.service';
 import { CreateSaleInvoiceDto } from './dto/create-sale-invoice.dto';
@@ -14,6 +16,7 @@ import { Roles } from '../../iam/authorization/decorators/roles.decorator';
 import { AccountType } from '../../generated/prisma/enums';
 import { ActiveUser } from '../../iam/decorators/active-user.decorator';
 import { CurrentPharmacy } from '../../common/decorators/current-pharmacy.decorator';
+import { GetSaleInvoicesDto } from './dto/get-sale-invoices.dto';
 
 @Roles(AccountType.PHARMACY)
 @Controller('sale-invoice')
@@ -29,13 +32,19 @@ export class SaleInvoiceController {
     return this.saleInvoiceService.create(pharmacyId, dto);
   }
   @Get()
-  findAll() {
-    return this.saleInvoiceService.findAll();
+  findAll(
+    @CurrentPharmacy() pharmacyId: number,
+    @Query() query: GetSaleInvoicesDto,
+  ) {
+    return this.saleInvoiceService.findAll(pharmacyId, query);
   }
 
-  @Get(':id')
-  findOne(@Param('id') id: string) {
-    return this.saleInvoiceService.findOne(+id);
+  @Get(':saleInvoiceId')
+  findOne(
+    @CurrentPharmacy() pharmacyId: number,
+    @Param('saleInvoiceId', ParseIntPipe) saleInvoiceId: number,
+  ) {
+    return this.saleInvoiceService.findOne(pharmacyId, saleInvoiceId);
   }
 
   @Patch(':id')

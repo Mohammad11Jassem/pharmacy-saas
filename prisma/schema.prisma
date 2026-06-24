@@ -773,6 +773,8 @@ model Patient {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@unique([pharmacyId, phone], name: "patient_pharmacy_phone_unique")
+  @@unique([pharmacyId, nationalId], name: "patient_pharmacy_national_id_unique")
   @@index([pharmacyId])
   @@index([phone])
   @@map("patients")
@@ -803,7 +805,8 @@ model PharmacyInvoice {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
-  @@unique([pharmacyId, idempotencyKey])
+  // @@unique([pharmacyId, idempotencyKey])
+  @@unique([pharmacyId, invoiceType, idempotencyKey])
   @@index([pharmacyId])
   @@index([patientId])
   @@index([invoiceType])
