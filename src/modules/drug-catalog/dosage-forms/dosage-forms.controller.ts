@@ -29,6 +29,7 @@ export class DosageFormsController {
     return await this.dosageFormsService.create(dto);
   }
 
+  @Roles(AccountType.ADMIN, AccountType.MEDICAL_TEAM, AccountType.PHARMACY)
   @Get()
   async findAll(
     @Query('page') page?: string,
@@ -40,6 +41,7 @@ export class DosageFormsController {
     );
   }
 
+  @Roles(AccountType.ADMIN, AccountType.MEDICAL_TEAM, AccountType.PHARMACY)
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return await this.dosageFormsService.findOne(id);

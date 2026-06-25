@@ -86,6 +86,18 @@ export class PharmacyDrugsController {
       pharmacyDrugId,
     );
   }
+
+  @Get('get-my-drug-by-barcode/:barcode')
+  findPharmacyDrugByBarcode(
+    @ActiveUser('sub') pharmacyId: number,
+    @Param('barcode') barcode: string,
+  ) {
+    return this.pharmacyDrugService.findPharmacyDrugByBarcode(
+      pharmacyId,
+      barcode,
+    );
+  }
+
   @Get(':pharmacyDrugId/sale-units')
   getPharmacyDrugSaleUnits(
     @ActiveUser('sub') pharmacyId: number,

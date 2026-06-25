@@ -31,11 +31,13 @@ export class ActiveIngredientsController {
     return await this.activeIngredientsService.create(dto);
   }
 
+  @Roles(AccountType.ADMIN, AccountType.MEDICAL_TEAM, AccountType.PHARMACY)
   @Get()
   async findAll() {
     return await this.activeIngredientsService.findAll();
   }
 
+  @Roles(AccountType.ADMIN, AccountType.MEDICAL_TEAM, AccountType.PHARMACY)
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return await this.activeIngredientsService.findOne(id);

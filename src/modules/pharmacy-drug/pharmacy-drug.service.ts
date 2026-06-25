@@ -13,6 +13,7 @@ import { UpdatePrivateDrugDto } from './dto/update-private-drug.dto';
 import { GetPharmacyDrugSaleUnitsUseCase } from './use-cases/get-pharmacy-drug-sale-units.usecase';
 import { ListAvailableBatchesQueryDto } from './dto/list-available-batches-query.dto';
 import { ListAvailableBatchesUseCase } from './use-cases/list-available-batches.usecase';
+import { FindPharmacyDrugByBarcodeUseCase } from './use-cases/find-pharmacy-drug-by-barcode.usecase';
 
 @Injectable()
 export class PharmacyDrugService {
@@ -32,6 +33,8 @@ export class PharmacyDrugService {
     private readonly getPharmacyDrugSaleUnitsUseCase: GetPharmacyDrugSaleUnitsUseCase,
     
     private readonly listAvailableBatchesUseCase: ListAvailableBatchesUseCase,
+
+    private readonly findPharmacyDrugByBarcodeUseCase: FindPharmacyDrugByBarcodeUseCase,
   ) {}
 
   addGeneralDrug(pharmacyId: number, dto: AddGeneralDrugDto) {
@@ -90,6 +93,13 @@ export class PharmacyDrugService {
       pharmacyId,
       pharmacyDrugId,
       query,
+    );
+  }
+
+  findPharmacyDrugByBarcode(pharmacyId: number, barcode: string) {
+    return this.findPharmacyDrugByBarcodeUseCase.execute(
+      pharmacyId,
+      barcode,
     );
   }
 }

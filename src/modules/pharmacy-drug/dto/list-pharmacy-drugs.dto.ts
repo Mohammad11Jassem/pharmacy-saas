@@ -10,8 +10,8 @@ import {
 } from 'class-validator';
 import { DrugSource } from '../../../generated/prisma/enums';
 
+// البحث بجزء من اسم الدواء
 export class ListPharmacyDrugsDto {
-  // البحث بجزء من اسم الدواء
   @IsOptional()
   @Transform(({ value }: { value: unknown }) =>
     typeof value === 'string'

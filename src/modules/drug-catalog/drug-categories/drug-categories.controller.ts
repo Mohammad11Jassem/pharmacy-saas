@@ -29,6 +29,7 @@ export class DrugCategoriesController {
     return await this.drugCategoriesService.create(dto);
   }
 
+  @Roles(AccountType.ADMIN, AccountType.MEDICAL_TEAM, AccountType.PHARMACY)
   @Get()
   async findAll(
     @Query('page') page?: string,
@@ -40,6 +41,7 @@ export class DrugCategoriesController {
     );
   }
 
+  @Roles(AccountType.ADMIN, AccountType.MEDICAL_TEAM, AccountType.PHARMACY)
   @Get(':id')
   async findOne(@Param('id', ParseIntPipe) id: number) {
     return await this.drugCategoriesService.findOne(id);
