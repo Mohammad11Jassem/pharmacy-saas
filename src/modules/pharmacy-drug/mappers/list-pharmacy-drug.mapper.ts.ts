@@ -30,15 +30,31 @@ export function mapPharmacyDrug(pharmacyDrug: ListPharmacyDrugPayload) {
         ? 'LOW_STOCK'
         : 'AVAILABLE';
 
-  const ingredients =
-    generalDrug?.ingredients.map((item) => ({
-      drugIngredientId: item.drugIngredientId,
-      ingredientId: item.ingredient.ingredientId,
-      ingredientName: item.ingredient.ingredientName,
-      strengthValue: decimalToNumber(item.strengthValue),
-      unit: item.unit,
-    })) ?? [];
+  const ingredients = generalDrug
+    ? generalDrug.ingredients.map((item) => ({
+        ingredientAssignmentId: item.drugIngredientId,
+        // drugIngredientId: item.drugIngredientId,
+        // privateDrugIngredientId: null,
 
+        ingredientId: item.ingredient.ingredientId,
+        ingredientName: item.ingredient.ingredientName,
+        strengthValue: decimalToNumber(item.strengthValue),
+        unit: item.unit,
+      }))
+    : privateDrug
+      ? privateDrug.ingredients.map((item) => ({
+          ingredientAssignmentId: item.privateDrugIngredientId,
+          // drugIngredientId: null,
+          // privateDrugIngredientId: item.privateDrugIngredientId,
+
+          ingredientId: item.ingredient.ingredientId,
+          ingredientName: item.ingredient.ingredientName,
+          strengthValue: decimalToNumber(item.strengthValue),
+          unit: item.unit,
+        }))
+      : [];
+
+  // console.log('ingredients:', ingredients);
   const ingredientsText =
     ingredients.length > 0
       ? ingredients
@@ -55,12 +71,19 @@ export function mapPharmacyDrug(pharmacyDrug: ListPharmacyDrugPayload) {
           .join(' + ')
       : null;
 
-  const categories =
-    generalDrug?.categories.map((item) => ({
-      uniqueId: item.uniqueId,
-      categoryId: item.category.categoryId,
-      categoryName: item.category.categoryName,
-    })) ?? [];
+  const categories = generalDrug
+    ? generalDrug.categories.map((item) => ({
+        uniqueId: item.uniqueId,
+        categoryId: item.category.categoryId,
+        categoryName: item.category.categoryName,
+      }))
+    : privateDrug
+      ? privateDrug.categories.map((item) => ({
+          uniqueId: item.uniqueId,
+          categoryId: item.category.categoryId,
+          categoryName: item.category.categoryName,
+        }))
+      : [];
 
   const dosageForm = drugInfo?.dosageForm ?? null;
   const unitsPerBox = drugInfo?.unitsPerBox ?? null;
@@ -83,7 +106,7 @@ export function mapPharmacyDrug(pharmacyDrug: ListPharmacyDrugPayload) {
     barcode: drugInfo?.barcode ?? null,
 
     categories,
-
+    ingredients,
     dosageForm: dosageForm
       ? {
           dosageFormId: dosageForm.dosageFormId,

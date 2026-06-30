@@ -172,6 +172,33 @@ export class ListPharmacyDrugsUseCase {
                         formCategory: true,
                       },
                     },
+                    ingredients: {
+                      select: {
+                        privateDrugIngredientId: true,
+                        strengthValue: true,
+                        unit: true,
+
+                        ingredient: {
+                          select: {
+                            ingredientId: true,
+                            ingredientName: true,
+                          },
+                        },
+                      },
+                    },
+
+                    categories: {
+                      select: {
+                        uniqueId: true,
+
+                        category: {
+                          select: {
+                            categoryId: true,
+                            categoryName: true,
+                          },
+                        },
+                      },
+                    },
                     
                   },
                 },

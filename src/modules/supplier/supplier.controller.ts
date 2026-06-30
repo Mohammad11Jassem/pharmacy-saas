@@ -13,7 +13,12 @@ import { CreateSupplierDto } from './dto/create-supplier.dto';
 import { UpdateSupplierDto } from './dto/update-supplier.dto';
 import { CurrentPharmacy } from '../../common/decorators/current-pharmacy.decorator';
 import { SupplierFilterDto } from './dto/create-supplier-filter.dto';
-
+import { Roles } from '../../iam/authorization/decorators/roles.decorator';
+import { AccountType } from '../../generated/prisma/enums';
+import { Auth } from '../../iam/authentication/decorators/auth.decorator';
+import { AuthType } from '../../iam/authentication/enums/auth-type.enum';
+@Auth(AuthType.Bearer)
+@Roles(AccountType.PHARMACY)
 @Controller('supplier')
 export class SupplierController {
   constructor(private readonly supplierService: SupplierService) {}

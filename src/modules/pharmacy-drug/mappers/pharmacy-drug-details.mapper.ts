@@ -1,3 +1,4 @@
+import { map } from 'rxjs';
 import type {
   PharmacyDrugGetPayload,
   PharmacyDrugSelect,
@@ -302,6 +303,8 @@ function mapPrivateDrug(
       consumerPrice: null,
     },
 
+    // ingredients: mapIngredients(privateDrug.ingredients), 
+    // categories: mapCategories(privateDrug.categories), 
     ingredients: [],
     categories: [],
   };
