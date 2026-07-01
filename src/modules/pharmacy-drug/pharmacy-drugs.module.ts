@@ -11,6 +11,8 @@ import { UpdatePrivateDrugUseCase } from './use-cases/update-private-drug.usecas
 import { GetPharmacyDrugSaleUnitsUseCase } from './use-cases/get-pharmacy-drug-sale-units.usecase';
 import { ListAvailableBatchesUseCase } from './use-cases/list-available-batches.usecase';
 import { FindPharmacyDrugByBarcodeUseCase } from './use-cases/find-pharmacy-drug-by-barcode.usecase';
+import { SearchPharmacyDrugsByBarcodeUseCase } from './use-cases/search-pharmacy-drugs-by-barcode.usecase';
+import { SearchPharmacyDrugsByNameUseCase } from './use-cases/search-pharmacy-drugs-by-name.usecase';
 
 @Module({
   controllers: [PharmacyDrugsController],
@@ -27,6 +29,8 @@ import { FindPharmacyDrugByBarcodeUseCase } from './use-cases/find-pharmacy-drug
     GetPharmacyDrugSaleUnitsUseCase,
     ListAvailableBatchesUseCase,
     FindPharmacyDrugByBarcodeUseCase,
+    SearchPharmacyDrugsByBarcodeUseCase,
+    SearchPharmacyDrugsByNameUseCase,
   ],
 })
 export class PharmacyDrugsModule {}

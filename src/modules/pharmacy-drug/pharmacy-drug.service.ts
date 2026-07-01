@@ -14,6 +14,9 @@ import { GetPharmacyDrugSaleUnitsUseCase } from './use-cases/get-pharmacy-drug-s
 import { ListAvailableBatchesQueryDto } from './dto/list-available-batches-query.dto';
 import { ListAvailableBatchesUseCase } from './use-cases/list-available-batches.usecase';
 import { FindPharmacyDrugByBarcodeUseCase } from './use-cases/find-pharmacy-drug-by-barcode.usecase';
+import { SearchPharmacyDrugByNameDto } from './dto/search-pharmacy-drug-by-name.dto';
+import { SearchPharmacyDrugsByBarcodeUseCase } from './use-cases/search-pharmacy-drugs-by-barcode.usecase';
+import { SearchPharmacyDrugsByNameUseCase } from './use-cases/search-pharmacy-drugs-by-name.usecase';
 
 @Injectable()
 export class PharmacyDrugService {
@@ -31,10 +34,14 @@ export class PharmacyDrugService {
     private readonly updatePrivateDrugUseCase: UpdatePrivateDrugUseCase,
 
     private readonly getPharmacyDrugSaleUnitsUseCase: GetPharmacyDrugSaleUnitsUseCase,
-    
+
     private readonly listAvailableBatchesUseCase: ListAvailableBatchesUseCase,
 
     private readonly findPharmacyDrugByBarcodeUseCase: FindPharmacyDrugByBarcodeUseCase,
+
+    private readonly searchPharmacyDrugsByBarcodeUseCase: SearchPharmacyDrugsByBarcodeUseCase,
+
+    private readonly searchPharmacyDrugsByNameUseCase: SearchPharmacyDrugsByNameUseCase,
   ) {}
 
   addGeneralDrug(pharmacyId: number, dto: AddGeneralDrugDto) {
@@ -97,9 +104,20 @@ export class PharmacyDrugService {
   }
 
   findPharmacyDrugByBarcode(pharmacyId: number, barcode: string) {
-    return this.findPharmacyDrugByBarcodeUseCase.execute(
+    return this.findPharmacyDrugByBarcodeUseCase.execute(pharmacyId, barcode);
+  }
+
+  searchPharmacyDrugsByBarcode(pharmacyId: number, barcode: string) {
+    return this.searchPharmacyDrugsByBarcodeUseCase.execute(
       pharmacyId,
       barcode,
     );
+  }
+
+  searchPharmacyDrugsByName(
+    pharmacyId: number,
+    dto: SearchPharmacyDrugByNameDto,
+  ) {
+    return this.searchPharmacyDrugsByNameUseCase.execute(pharmacyId, dto);
   }
 }

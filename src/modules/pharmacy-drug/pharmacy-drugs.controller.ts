@@ -18,6 +18,7 @@ import { AddPrivateDrugDto } from './dto/add-private-drug.dto';
 import { UpdatePrivateDrugDto } from './dto/update-private-drug.dto';
 import { CurrentPharmacy } from '../../common/decorators/current-pharmacy.decorator';
 import { ListAvailableBatchesQueryDto } from './dto/list-available-batches-query.dto';
+import { SearchPharmacyDrugByNameDto } from './dto/search-pharmacy-drug-by-name.dto';
 @Roles(AccountType.PHARMACY)
 @Controller('pharmacy-drugs')
 export class PharmacyDrugsController {
@@ -120,6 +121,28 @@ export class PharmacyDrugsController {
       pharmacyId,
       pharmacyDrugId,
       query,
+    );
+  }
+
+  @Get('search-in-stock-and-cdb/by-barcode/:barcode')
+  searchPharmacyDrugsByBarcode(
+    @ActiveUser('sub') pharmacyId: number,
+    @Param('barcode') barcode: string,
+  ) {
+    return this.pharmacyDrugService.searchPharmacyDrugsByBarcode(
+      pharmacyId,
+      barcode,
+    );
+  }
+
+  @Get('search-in-stock-and-cdb/by-name')
+  searchPharmacyDrugsByName(
+    @ActiveUser('sub') pharmacyId: number,
+    @Query() dto: SearchPharmacyDrugByNameDto,
+  ) {
+    return this.pharmacyDrugService.searchPharmacyDrugsByName(
+      pharmacyId,
+      dto,
     );
   }
 }
