@@ -111,9 +111,6 @@ export class UpdateDamageInvoiceItemUseCase {
             quantityDamaged:
               dto.quantityDamaged,
 
-            damageReason:
-              dto.damageReason,
-
             notes:
               dto.notes !== undefined
                 ? dto.notes?.trim()

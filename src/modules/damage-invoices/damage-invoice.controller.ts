@@ -8,6 +8,7 @@ import { AccountType } from "../../generated/prisma/enums";
 import { CreateDamageInvoiceDto } from "./dto/create-damage-invoice.dto";
 import { CreateDamageInvoiceItemDto } from "./dto/create-damage-invoice-item.dto";
 import { UpdateDamageInvoiceItemDto } from "./dto/update-damage-invoice-item.dto";
+import { CreateSingleDrugDamageInvoiceDto } from "./dto/create-single-drug-damage-invoice.dto";
 
 @Auth(AuthType.Bearer)
 @Roles(AccountType.PHARMACY)
@@ -93,6 +94,17 @@ export class DamageInvoiceController {
       pharmacyId,
       damageInvoiceId,
       itemId,
+      dto,
+    );
+  }
+
+  @Post('create-damage-invoice-for-single-drug')
+  async createSingleDrugDamageInvoice(
+    @ActiveUser('sub') pharmacyId: number,
+    @Body() dto: CreateSingleDrugDamageInvoiceDto,
+  ) {
+    return await this.damageInvoiceService.createSingleDrugDamageInvoice(
+      pharmacyId,
       dto,
     );
   }

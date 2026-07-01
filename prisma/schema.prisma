@@ -946,6 +946,8 @@ model ReturnInvoiceItem {
 model DamageInvoice {
   damageInvoiceId Int @id @default(autoincrement()) @map("damage_invoice_id")
 
+  invoiceNumber String? @unique @map("invoice_number")
+  damageReason String? @map("damage_reason") @db.Text
   pharmacyInvoiceId Int             @unique @map("pharmacy_invoice_id")
   pharmacyInvoice   PharmacyInvoice @relation(fields: [pharmacyInvoiceId], references: [pharmacyInvoiceId], onDelete: Cascade)
 
@@ -972,9 +974,11 @@ model DamageInvoiceItem {
 
   // unitType         UnitType @map("unit_type")
   quantityDamaged Int @map("quantity_damaged")
+  unitConsumerPrice Decimal? @map("unit_consumer_price") @db.Decimal(12, 2)
+
   // unitFactorToBase Int      @map("unit_factor_to_base")
 
-  damageReason DamageReason @map("damage_reason")
+  // damageReason DamageReason @map("damage_reason")
   notes        String?      @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")

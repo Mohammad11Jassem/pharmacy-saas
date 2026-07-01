@@ -8,6 +8,8 @@ import { CreateDamageInvoiceDto } from "./dto/create-damage-invoice.dto";
 import { UpdateDamageInvoiceDto } from "./dto/update-damage-invoice.dto";
 import { CreateDamageInvoiceItemDto } from "./dto/create-damage-invoice-item.dto";
 import { UpdateDamageInvoiceItemDto } from "./dto/update-damage-invoice-item.dto";
+import { CreateSingleDrugDamageInvoiceUseCase } from "./use-cases/create-single-drug-damage-invoice.usecase";
+import { CreateSingleDrugDamageInvoiceDto } from "./dto/create-single-drug-damage-invoice.dto";
 
 @Injectable()
 export class DamageInvoiceService {
@@ -20,6 +22,7 @@ export class DamageInvoiceService {
     private readonly addDamageInvoiceItemUseCase: AddDamageInvoiceItemUseCase,
     // private readonly updateDamageInvoiceItemUseCase: UpdateDamageInvoiceItemUseCase,
     // private readonly deleteDamageInvoiceItemUseCase: DeleteDamageInvoiceItemUseCase,
+    private readonly createSingleDrugDamageInvoiceUseCase: CreateSingleDrugDamageInvoiceUseCase,
   ) {}
 
 
@@ -122,4 +125,14 @@ export class DamageInvoiceService {
 //       itemId,
 //     );
 //   }
+
+  createSingleDrugDamageInvoice(
+    pharmacyId: number,
+    dto: CreateSingleDrugDamageInvoiceDto,
+  ) {
+    return this.createSingleDrugDamageInvoiceUseCase.execute(
+      pharmacyId,
+      dto,
+    );
+  }
 }

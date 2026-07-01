@@ -3,6 +3,8 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { damageInvoiceDetailsSelect, mapDamageInvoiceDetails } from '../mapper/damage-invoice-details.mapper';
+
 
 @Injectable()
 export class GetDamageInvoiceUseCase {
@@ -23,65 +25,9 @@ export class GetDamageInvoiceUseCase {
             pharmacyId,
           },
         },
-        select: {
-          damageInvoiceId: true,
-          pharmacyInvoice: {
-            select: {
-              pharmacyInvoiceId: true,
-              invoiceDate: true,
-              invoiceType: true,
-              status: true,
-              notes: true,
-              createdAt: true,
-              updatedAt: true,
-            },
-          },
 
-          items: {
-            select: {
-              damageInvoiceItemId: true,
-              quantityDamaged: true,
-              damageReason: true,
-              notes: true,
-
-              batch: {
-                select: {
-                  batchId: true,
-                  expiryDate: true,
-                  initialQuantity: true,
-                  soldQuantity: true,
-
-
-                  pharmacyDrug: {
-                    select: {
-                      pharmacyDrugId: true,
-
-                      drug: {
-                        select: {
-                          source: true,
-
-                          generalDrug: {
-                            select: {
-                              tradeName: true,
-                              barcode: true,
-                            },
-                          },
-
-                          privateDrug: {
-                            select: {
-                              tradeName: true,
-                              barcode: true,
-                            },
-                          },
-                        },
-                      },
-                    },
-                  },
-                },
-              },
-            },
-          },
-        },
+        select:
+          damageInvoiceDetailsSelect,
       });
 
     if (!damageInvoice) {
@@ -90,6 +36,8 @@ export class GetDamageInvoiceUseCase {
       );
     }
 
-    return damageInvoice;
+    return mapDamageInvoiceDetails(
+      damageInvoice,
+    );
   }
 }

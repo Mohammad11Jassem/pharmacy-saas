@@ -12,17 +12,17 @@ export class CreateSupplierDto {
   @MaxLength(200)
   supplierName!: string;
 
-  @IsOptional()
+
   @IsString()
   @MaxLength(50)
   phone?: string;
 
-  @IsOptional()
+
   @IsString()
   @MaxLength(500)
   address?: string;
 
-  @IsOptional()
+
   @IsString()
   notes?: string;
 }

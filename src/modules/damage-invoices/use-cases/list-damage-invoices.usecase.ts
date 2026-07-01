@@ -1,6 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { Prisma } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
+import { listDamageInvoiceSelect, mapDamageInvoiceListItem } from '../mapper/list-damage-invoice.mapper';
+
 
 @Injectable()
 export class ListDamageInvoicesUseCase {
@@ -13,7 +15,17 @@ export class ListDamageInvoicesUseCase {
     page = 1,
     limit = 20,
   ) {
-    const skip = (page - 1) * limit;
+    const safePage =
+      Math.max(Number(page) || 1, 1);
+
+    const safeLimit =
+      Math.min(
+        Math.max(Number(limit) || 20, 1),
+        100,
+      );
+
+    const skip =
+      (safePage - 1) * safeLimit;
 
     const where: Prisma.DamageInvoiceWhereInput = {
       pharmacyInvoice: {
@@ -21,51 +33,51 @@ export class ListDamageInvoicesUseCase {
       },
     };
 
-    const [damageInvoices, total] = await Promise.all([
-      this.prisma.damageInvoice.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: {
-          damageInvoiceId: 'desc',
-        },
-        select: {
-          damageInvoiceId: true,
+    const [damageInvoices, total] =
+      await Promise.all([
+        this.prisma.damageInvoice.findMany({
+          where,
 
-          pharmacyInvoice: {
-            select: {
-              pharmacyInvoiceId: true,
-              invoiceDate: true,
-              invoiceType: true,
-              status: true,
-              notes: true,
-              createdAt: true,
-            },
+          skip,
+          take: safeLimit,
+
+          orderBy: {
+            damageInvoiceId: 'desc',
           },
 
-          _count: {
-            select: {
-              items: true,
-            },
-          },
-        },
-      }),
+          select: listDamageInvoiceSelect,
+        }),
 
-      this.prisma.damageInvoice.count({
-        where,
-      }),
-    ]);
+        this.prisma.damageInvoice.count({
+          where,
+        }),
+      ]);
 
-    const pages = Math.ceil(total / limit);
+    const mappedDamageInvoices =
+      damageInvoices.map(mapDamageInvoiceListItem);
+
+    const pages =
+      Math.ceil(total / safeLimit);
 
     return {
-      damageInvoices,
-      page,
-      limit,
+      damageInvoices:
+        mappedDamageInvoices,
+
+      page:
+        safePage,
+
+      limit:
+        safeLimit,
+
       total,
+
       pages,
-      hasNextPage: page < pages,
-      hasPreviousPage: page > 1,
+
+      hasNextPage:
+        safePage < pages,
+
+      hasPreviousPage:
+        safePage > 1,
     };
   }
 }

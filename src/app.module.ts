@@ -27,6 +27,7 @@ import { SaleInvoiceItemModule } from './modules/sale-invoice-item/sale-invoice-
 import { PatientModule } from './modules/patient/patient.module';
 import { ReturnInvoiceModule } from './modules/return-invoice/return-invoice.module';
 import { ReturnInvoiceItemModule } from './modules/return-invoice-item/return-invoice-item.module';
+import { DamageInvoiceModule } from './modules/damage-invoices/damage-invoice.module';
 
 @Module({
   imports: [
@@ -57,6 +58,7 @@ import { ReturnInvoiceItemModule } from './modules/return-invoice-item/return-in
     PatientModule,
     ReturnInvoiceModule,
     ReturnInvoiceItemModule,
+    DamageInvoiceModule,
   ],
   providers: [
     {

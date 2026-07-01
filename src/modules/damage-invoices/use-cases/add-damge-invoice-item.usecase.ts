@@ -96,9 +96,6 @@ export class AddDamageInvoiceItemUseCase {
             quantityDamaged:
               dto.quantityDamaged,
 
-            damageReason:
-              dto.damageReason,
-
             notes:
               dto.notes?.trim(),
           },
