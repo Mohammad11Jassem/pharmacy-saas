@@ -23,15 +23,32 @@ import { AuthType } from '../../iam/authentication/enums/auth-type.enum';
 export class SupplierController {
   constructor(private readonly supplierService: SupplierService) {}
 
+  // @Post('create')
+  // create(
+  //   @CurrentPharmacy() pharmacyId: number,
+  //   @Body() dto: Omit<CreateSupplierDto, 'pharmacyId'>,
+  // ) {
+  //   return this.supplierService.create({
+  //     ...dto,
+  //     pharmacyId,
+  //   });
+  // }
+
   @Post('create')
   create(
     @CurrentPharmacy() pharmacyId: number,
-    @Body() dto: Omit<CreateSupplierDto, 'pharmacyId'>,
+    @Body() dto: CreateSupplierDto,
   ) {
-    return this.supplierService.create({
-      ...dto,
-      pharmacyId,
-    });
+    return this.supplierService.create(pharmacyId, dto);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id') id: string,
+    @Body() updateSupplierDto: UpdateSupplierDto,
+    @CurrentPharmacy() pharmacyId: number,
+  ) {
+    return this.supplierService.update(+id, pharmacyId, updateSupplierDto);
   }
 
   @Get()
@@ -47,14 +64,14 @@ export class SupplierController {
     return this.supplierService.findOne(+id, pharmacyId);
   }
 
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateSupplierDto: UpdateSupplierDto,
-    @CurrentPharmacy() pharmacyId: number, // مررها إن قمت بتعديل التابع في الـ Service
-  ) {
-    return this.supplierService.update(+id, updateSupplierDto, pharmacyId);
-  }
+  // @Patch(':id')
+  // update(
+  //   @Param('id') id: string,
+  //   @Body() updateSupplierDto: UpdateSupplierDto,
+  //   @CurrentPharmacy() pharmacyId: number, // مررها إن قمت بتعديل التابع في الـ Service
+  // ) {
+  //   return this.supplierService.update(+id, updateSupplierDto, pharmacyId);
+  // }
 
   @Delete(':id')
   remove(
