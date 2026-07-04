@@ -5,17 +5,23 @@ import { CreateReturnInvoiceUseCase } from './use-cases/create-return-invoice.us
 import { FindReturnInvoicesBySaleUseCase } from './use-cases/find-return-invoices-by-sale.usecase';
 import { GetReturnInvoicesBySaleDto } from './dto/get-return-invoices-by-sale.dto';
 import { FindReturnInvoiceDetailsUseCase } from './use-cases/find-return-invoice-details.usecase';
+import { ListReturnInvoicesUseCase } from './use-cases/list-return-invoices.usecase';
+import { GetReturnInvoicesQueryDto } from './dto/get-return-invoices-query.dto';
 
 @Injectable()
 export class ReturnInvoiceService {
   constructor(
     private readonly createReturnInvoiceUseCase: CreateReturnInvoiceUseCase,
     private readonly findReturnInvoicesBySaleUseCase: FindReturnInvoicesBySaleUseCase,
+    private readonly listReturnInvoicesUseCase: ListReturnInvoicesUseCase,
     private readonly findReturnInvoiceDetailsUseCase: FindReturnInvoiceDetailsUseCase,
   ) {}
 
   create(pharmacyId: number, dto: CreateReturnInvoiceDto) {
     return this.createReturnInvoiceUseCase.execute(pharmacyId, dto);
+  }
+  findAll(pharmacyId: number, query: GetReturnInvoicesQueryDto) {
+    return this.listReturnInvoicesUseCase.execute(pharmacyId, query);
   }
   findBySaleInvoice(
     pharmacyId: number,

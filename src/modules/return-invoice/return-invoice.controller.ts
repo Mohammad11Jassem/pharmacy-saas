@@ -16,6 +16,7 @@ import { Roles } from '../../iam/authorization/decorators/roles.decorator';
 import { AccountType } from '../../generated/prisma/enums';
 import { CurrentPharmacy } from '../../common/decorators/current-pharmacy.decorator';
 import { GetReturnInvoicesBySaleDto } from './dto/get-return-invoices-by-sale.dto';
+import { GetReturnInvoicesQueryDto } from './dto/get-return-invoices-query.dto';
 
 @Roles(AccountType.PHARMACY)
 @Controller('return-invoice')
@@ -29,6 +30,14 @@ export class ReturnInvoiceController {
     @Body() dto: CreateReturnInvoiceDto,
   ) {
     return this.returnInvoiceService.create(pharmacyId, dto);
+  }
+
+  @Get()
+  findAll(
+    @CurrentPharmacy() pharmacyId: number,
+    @Query() query: GetReturnInvoicesQueryDto,
+  ) {
+    return this.returnInvoiceService.findAll(pharmacyId, query);
   }
 
   @Get('by-sale/:saleInvoiceId')
