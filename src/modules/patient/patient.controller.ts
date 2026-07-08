@@ -1,7 +1,18 @@
-import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+} from '@nestjs/common';
 import { PatientService } from './patient.service';
 import { CreatePatientDto } from './dto/create-patient.dto';
 import { UpdatePatientDto } from './dto/update-patient.dto';
+import { CurrentPharmacy } from '../../common/decorators/current-pharmacy.decorator';
+import { GetPatientsQueryDto } from './dto/get-patients-query.dto';
 
 @Controller('patient')
 export class PatientController {
@@ -13,8 +24,11 @@ export class PatientController {
   }
 
   @Get()
-  findAll() {
-    return this.patientService.findAll();
+  findAll(
+    @CurrentPharmacy() pharmacyId: number,
+    @Query() query: GetPatientsQueryDto,
+  ) {
+    return this.patientService.findAll(pharmacyId, query);
   }
 
   @Get(':id')
