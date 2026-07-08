@@ -30,4 +30,17 @@ export class SearchPharmacyDrugByNameDto {
   @Min(1)
   @Max(100)
   limit = 20;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  generalPage = 1;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  generalLimit = 20;
 }

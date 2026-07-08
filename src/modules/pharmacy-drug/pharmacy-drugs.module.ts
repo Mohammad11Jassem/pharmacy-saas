@@ -13,6 +13,7 @@ import { ListAvailableBatchesUseCase } from './use-cases/list-available-batches.
 import { FindPharmacyDrugByBarcodeUseCase } from './use-cases/find-pharmacy-drug-by-barcode.usecase';
 import { SearchPharmacyDrugsByBarcodeUseCase } from './use-cases/search-pharmacy-drugs-by-barcode.usecase';
 import { SearchPharmacyDrugsByNameUseCase } from './use-cases/search-pharmacy-drugs-by-name.usecase';
+import { SearchMyPharmacyDrugsByNameUseCase } from './use-cases/search-my-pharmacy-drugs-by-name.usecase';
 
 @Module({
   controllers: [PharmacyDrugsController],
@@ -31,6 +32,7 @@ import { SearchPharmacyDrugsByNameUseCase } from './use-cases/search-pharmacy-dr
     FindPharmacyDrugByBarcodeUseCase,
     SearchPharmacyDrugsByBarcodeUseCase,
     SearchPharmacyDrugsByNameUseCase,
+    SearchMyPharmacyDrugsByNameUseCase,
   ],
 })
 export class PharmacyDrugsModule {}

@@ -178,6 +178,34 @@ enum DamageReason {
   OTHER
 }
 
+enum SubscriptionPlanType {
+  STARTER
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum SubscriptionPlanStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum OfferScope {
+  PUBLIC
+  PRIVATE
+}
+
+enum DiscountType {
+  PERCENTAGE
+  FIXED_AMOUNT
+}
+
+enum PharmacySubscriptionStatus {
+  SCHEDULED
+  ACTIVE
+  EXPIRED
+  CANCELLED
+}
+
 // ─── USER ACCOUNT ─────────────────────────────────────────────────────────────
 
 model UserAccount {
@@ -246,8 +274,10 @@ model Pharmacy {
   pharmacyInvoices PharmacyInvoice[]
   patients         Patient[]
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  subscriptions PharmacySubscription[]
+  offerGrants   PharmacyOfferGrant[]
+  createdAt     DateTime               @default(now()) @map("created_at")
+  updatedAt     DateTime               @updatedAt @map("updated_at")
 
   @@map("pharmacies")
 }
@@ -946,8 +976,8 @@ model ReturnInvoiceItem {
 model DamageInvoice {
   damageInvoiceId Int @id @default(autoincrement()) @map("damage_invoice_id")
 
-  invoiceNumber String? @unique @map("invoice_number")
-  damageReason String? @map("damage_reason") @db.Text
+  invoiceNumber     String?         @unique @map("invoice_number")
+  damageReason      String?         @map("damage_reason") @db.Text
   pharmacyInvoiceId Int             @unique @map("pharmacy_invoice_id")
   pharmacyInvoice   PharmacyInvoice @relation(fields: [pharmacyInvoiceId], references: [pharmacyInvoiceId], onDelete: Cascade)
 
@@ -973,13 +1003,13 @@ model DamageInvoiceItem {
   batch   Batch @relation(fields: [batchId], references: [batchId], onDelete: Restrict)
 
   // unitType         UnitType @map("unit_type")
-  quantityDamaged Int @map("quantity_damaged")
+  quantityDamaged   Int      @map("quantity_damaged")
   unitConsumerPrice Decimal? @map("unit_consumer_price") @db.Decimal(12, 2)
 
   // unitFactorToBase Int      @map("unit_factor_to_base")
 
   // damageReason DamageReason @map("damage_reason")
-  notes        String?      @db.Text
+  notes String? @db.Text
 
   createdAt DateTime @default(now()) @map("created_at")
 
@@ -987,4 +1017,157 @@ model DamageInvoiceItem {
   // @@index([pharmacyDrugId])
   @@index([batchId])
   @@map("damage_invoice_items")
+}
+
+// ─── SUBSCRIPTION PLAN ────────────────────────────────────────────────────────
+
+model SubscriptionPlan {
+  planId Int @id @default(autoincrement()) @map("plan_id")
+
+  code        String  @unique
+  name        String
+  description String? @db.Text
+
+  durationMonths Int @map("duration_months")
+
+  planPrice Decimal @map("plan_price") @db.Decimal(12, 2)
+  currency  String  @default("SP")
+
+  type   SubscriptionPlanType
+  status SubscriptionPlanStatus @default(ACTIVE)
+
+  offers        PlanOffer[]
+  subscriptions PharmacySubscription[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("subscription_plans")
+}
+
+// ─── PLAN OFFER ───────────────────────────────────────────────────────────────
+
+model PlanOffer {
+  offerId Int @id @default(autoincrement()) @map("offer_id")
+
+  planId Int              @map("plan_id")
+  plan   SubscriptionPlan @relation(fields: [planId], references: [planId], onDelete: Cascade)
+
+  code        String  @unique
+  title       String
+  description String? @db.Text
+
+  scope OfferScope
+
+  discountType  DiscountType @map("discount_type")
+  discountValue Decimal      @map("discount_value") @db.Decimal(12, 2)
+
+  isActive Boolean @default(true) @map("is_active")
+
+  startsAt DateTime @map("starts_at")
+  endsAt   DateTime @map("ends_at")
+
+  grants        PharmacyOfferGrant[]
+  appliedOffers SubscriptionAppliedOffer[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([planId])
+  @@index([scope, isActive, startsAt, endsAt])
+  @@map("plan_offers")
+}
+
+// ─── PHARMACY OFFER GRANT ─────────────────────────────────────────────────────
+
+model PharmacyOfferGrant {
+  pharmacyOfferGrantId Int @id @default(autoincrement()) @map("pharmacy_offer_grant_id")
+
+  pharmacyId Int      @map("pharmacy_id")
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [pharmacyId], onDelete: Cascade)
+
+  offerId Int       @map("offer_id")
+  offer   PlanOffer @relation(fields: [offerId], references: [offerId], onDelete: Cascade)
+
+  grantReason String? @map("grant_reason") @db.Text
+
+  validFrom  DateTime @map("valid_from")
+  validUntil DateTime @map("valid_until")
+
+  note String? @db.Text
+
+  redeemedAt DateTime? @map("redeemed_at")
+
+  // appliedOffer SubscriptionAppliedOffer?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([pharmacyId, offerId])
+  @@index([pharmacyId, validFrom, validUntil])
+  @@index([offerId])
+  @@index([redeemedAt])
+  @@map("pharmacy_offer_grants")
+}
+
+// ─── PHARMACY SUBSCRIPTION ────────────────────────────────────────────────────
+
+model PharmacySubscription {
+  pharmacySubscriptionId Int @id @default(autoincrement()) @map("pharmacy_subscription_id")
+
+  pharmacyId Int      @map("pharmacy_id")
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [pharmacyId], onDelete: Cascade)
+
+  planId Int              @map("plan_id")
+  plan   SubscriptionPlan @relation(fields: [planId], references: [planId])
+
+  status PharmacySubscriptionStatus @default(ACTIVE)
+
+  startsAt DateTime @map("starts_at")
+  endsAt   DateTime @map("ends_at")
+
+  basePrice  Decimal @map("base_price") @db.Decimal(12, 2)
+  finalPrice Decimal @map("final_price") @db.Decimal(12, 2)
+
+  currency String @default("SP")
+
+  appliedOffer SubscriptionAppliedOffer?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([pharmacyId, startsAt, endsAt])
+  @@index([pharmacyId, status])
+  @@index([planId])
+  @@map("pharmacy_subscriptions")
+}
+
+// ─── SUBSCRIPTION APPLIED OFFER ───────────────────────────────────────────────
+
+model SubscriptionAppliedOffer {
+  appliedOfferId Int @id @default(autoincrement()) @map("applied_offer_id")
+
+  pharmacySubscriptionId Int                  @unique @map("pharmacy_subscription_id")
+  pharmacySubscription   PharmacySubscription @relation(fields: [pharmacySubscriptionId], references: [pharmacySubscriptionId], onDelete: Cascade)
+
+  offerId Int       @map("offer_id")
+  offer   PlanOffer @relation(fields: [offerId], references: [offerId])
+
+  // pharmacyOfferGrantId Int?                @unique @map("pharmacy_offer_grant_id")
+  // pharmacyOfferGrant   PharmacyOfferGrant? @relation(fields: [pharmacyOfferGrantId], references: [pharmacyOfferGrantId])
+
+  // basePriceSnapshot Decimal @map("base_price_snapshot") @db.Decimal(12, 2)
+
+  // discountTypeSnapshot DiscountType @map("discount_type_snapshot")
+
+  // discountValueSnapshot Decimal @map("discount_value_snapshot") @db.Decimal(12, 2)
+
+  // finalPriceSnapshot Decimal @map("final_price_snapshot") @db.Decimal(12, 2)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([offerId])
+  @@map("subscription_applied_offers")
 }

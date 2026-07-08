@@ -1,15 +1,16 @@
-import { Injectable } from "@nestjs/common";
-import { CreateDamageInvoiceUseCase } from "./use-cases/create-damage-invoice.usecase";
-import { ListDamageInvoicesUseCase } from "./use-cases/list-damage-invoices.usecase";
-import { GetDamageInvoiceUseCase } from "./use-cases/damage-invoice-by-id.usecase";
-import { UpdateDamageInvoiceItemUseCase } from "./use-cases/update-damge-invoice-item.usecase";
-import { AddDamageInvoiceItemUseCase } from "./use-cases/add-damge-invoice-item.usecase";
-import { CreateDamageInvoiceDto } from "./dto/create-damage-invoice.dto";
-import { UpdateDamageInvoiceDto } from "./dto/update-damage-invoice.dto";
-import { CreateDamageInvoiceItemDto } from "./dto/create-damage-invoice-item.dto";
-import { UpdateDamageInvoiceItemDto } from "./dto/update-damage-invoice-item.dto";
-import { CreateSingleDrugDamageInvoiceUseCase } from "./use-cases/create-single-drug-damage-invoice.usecase";
-import { CreateSingleDrugDamageInvoiceDto } from "./dto/create-single-drug-damage-invoice.dto";
+import { Injectable } from '@nestjs/common';
+import { CreateDamageInvoiceUseCase } from './use-cases/create-damage-invoice.usecase';
+import { ListDamageInvoicesUseCase } from './use-cases/list-damage-invoices.usecase';
+import { GetDamageInvoiceUseCase } from './use-cases/damage-invoice-by-id.usecase';
+import { UpdateDamageInvoiceItemUseCase } from './use-cases/update-damge-invoice-item.usecase';
+import { AddDamageInvoiceItemUseCase } from './use-cases/add-damge-invoice-item.usecase';
+import { CreateDamageInvoiceDto } from './dto/create-damage-invoice.dto';
+import { UpdateDamageInvoiceDto } from './dto/update-damage-invoice.dto';
+import { CreateDamageInvoiceItemDto } from './dto/create-damage-invoice-item.dto';
+import { UpdateDamageInvoiceItemDto } from './dto/update-damage-invoice-item.dto';
+import { CreateSingleDrugDamageInvoiceUseCase } from './use-cases/create-single-drug-damage-invoice.usecase';
+import { CreateSingleDrugDamageInvoiceDto } from './dto/create-single-drug-damage-invoice.dto';
+import { ListDamageInvoicesDto } from './dto/list-damage-invoices.dto';
 
 @Injectable()
 export class DamageInvoiceService {
@@ -25,41 +26,17 @@ export class DamageInvoiceService {
     private readonly createSingleDrugDamageInvoiceUseCase: CreateSingleDrugDamageInvoiceUseCase,
   ) {}
 
-
-  create(
-    pharmacyId: number,
-    dto: CreateDamageInvoiceDto,
-  ) {
-    return this.createDamageInvoiceUseCase.execute(
-      pharmacyId,
-      dto,
-    );
+  create(pharmacyId: number, dto: CreateDamageInvoiceDto) {
+    return this.createDamageInvoiceUseCase.execute(pharmacyId, dto);
   }
 
-
-  list(
-    pharmacyId: number,
-    page?: number,
-    limit?: number,
-  ) {
-    return this.listDamageInvoicesUseCase.execute(
-      pharmacyId,
-      page ? Number(page) : 1,
-      limit ? Number(limit) : 20,
-    );
+  list(pharmacyId: number, dto: ListDamageInvoicesDto) {
+    return this.listDamageInvoicesUseCase.execute(pharmacyId, dto);
   }
 
-
-  getOne(
-    pharmacyId: number,
-    damageInvoiceId: number,
-  ) {
-    return this.getDamageInvoiceUseCase.execute(
-      pharmacyId,
-      damageInvoiceId,
-    );
+  getOne(pharmacyId: number, damageInvoiceId: number) {
+    return this.getDamageInvoiceUseCase.execute(pharmacyId, damageInvoiceId);
   }
-
 
   updateDamageInvoiceItem(
     pharmacyId: number,
@@ -75,16 +52,15 @@ export class DamageInvoiceService {
     );
   }
 
-
-//   cancel(
-//     pharmacyId: number,
-//     damageInvoiceId: number,
-//   ) {
-//     return this.cancelDamageInvoiceUseCase.execute(
-//       pharmacyId,
-//       damageInvoiceId,
-//     );
-//   }
+  //   cancel(
+  //     pharmacyId: number,
+  //     damageInvoiceId: number,
+  //   ) {
+  //     return this.cancelDamageInvoiceUseCase.execute(
+  //       pharmacyId,
+  //       damageInvoiceId,
+  //     );
+  //   }
 
   addItem(
     pharmacyId: number,
@@ -98,41 +74,36 @@ export class DamageInvoiceService {
     );
   }
 
+  //   updateItem(
+  //     pharmacyId: number,
+  //     damageInvoiceId: number,
+  //     itemId: number,
+  //     dto: UpdateDamageInvoiceItemDto,
+  //   ) {
+  //     return this.updateDamageInvoiceItemUseCase.execute(
+  //       pharmacyId,
+  //       damageInvoiceId,
+  //       itemId,
+  //       dto,
+  //     );
+  //   }
 
-//   updateItem(
-//     pharmacyId: number,
-//     damageInvoiceId: number,
-//     itemId: number,
-//     dto: UpdateDamageInvoiceItemDto,
-//   ) {
-//     return this.updateDamageInvoiceItemUseCase.execute(
-//       pharmacyId,
-//       damageInvoiceId,
-//       itemId,
-//       dto,
-//     );
-//   }
-
-
-//   deleteItem(
-//     pharmacyId: number,
-//     damageInvoiceId: number,
-//     itemId: number,
-//   ) {
-//     return this.deleteDamageInvoiceItemUseCase.execute(
-//       pharmacyId,
-//       damageInvoiceId,
-//       itemId,
-//     );
-//   }
+  //   deleteItem(
+  //     pharmacyId: number,
+  //     damageInvoiceId: number,
+  //     itemId: number,
+  //   ) {
+  //     return this.deleteDamageInvoiceItemUseCase.execute(
+  //       pharmacyId,
+  //       damageInvoiceId,
+  //       itemId,
+  //     );
+  //   }
 
   createSingleDrugDamageInvoice(
     pharmacyId: number,
     dto: CreateSingleDrugDamageInvoiceDto,
   ) {
-    return this.createSingleDrugDamageInvoiceUseCase.execute(
-      pharmacyId,
-      dto,
-    );
+    return this.createSingleDrugDamageInvoiceUseCase.execute(pharmacyId, dto);
   }
 }

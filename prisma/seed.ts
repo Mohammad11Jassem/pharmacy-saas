@@ -146,7 +146,7 @@ import { seedDosageForms } from './seeds/master-data/dosage-forms.seed';
 import { seedDrugCategories } from './seeds/master-data/drug-categories.seed';
 import { seedActiveIngredients } from './seeds/master-data/active-ingredients.seed';
 import { seedGeneralDrugs } from './seeds/master-data/general-drugs.seed';
-
+import { seedSubscriptionPlans } from './seeds/master-data/subscription-plans.seed';
 const prisma = createPrismaSeedClient();
 
 async function main() {
@@ -160,6 +160,8 @@ async function main() {
   await seedActiveIngredients(prisma);
   await seedGeneralDrugs(prisma);
 
+  await seedSubscriptionPlans(prisma);
+  
   const userPasswordHash = await hashSeedPassword(SEED_USER_PASSWORD);
   const pharmacyPasswordHash = await hashSeedPassword(SEED_PHARMACY_PASSWORD);
 

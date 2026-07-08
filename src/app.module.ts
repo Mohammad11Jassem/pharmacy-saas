@@ -28,6 +28,7 @@ import { PatientModule } from './modules/patient/patient.module';
 import { ReturnInvoiceModule } from './modules/return-invoice/return-invoice.module';
 import { ReturnInvoiceItemModule } from './modules/return-invoice-item/return-invoice-item.module';
 import { DamageInvoiceModule } from './modules/damage-invoices/damage-invoice.module';
+import { SubscriptionModule } from './modules/subscription/subscription.module';
 
 @Module({
   imports: [
@@ -59,6 +60,7 @@ import { DamageInvoiceModule } from './modules/damage-invoices/damage-invoice.mo
     ReturnInvoiceModule,
     ReturnInvoiceItemModule,
     DamageInvoiceModule,
+    SubscriptionModule,
   ],
   providers: [
     {

@@ -19,11 +19,22 @@ export class SearchPharmacyDrugsByNameUseCase {
       throw new BadRequestException('Drug name is required');
     }
 
+    // Pagination الخاصة بـ pharmacyDrugs
     const page = Math.max(Number(dto.page) || 1, 1);
 
     const limit = Math.min(Math.max(Number(dto.limit) || 20, 1), 100);
 
     const skip = (page - 1) * limit;
+
+    // Pagination الخاصة بـ generalDrugs
+    const generalPage = Math.max(Number(dto.generalPage) || 1, 1);
+
+    const generalLimit = Math.min(
+      Math.max(Number(dto.generalLimit) || 20, 1),
+      100,
+    );
+
+    const generalSkip = (generalPage - 1) * generalLimit;
 
     const pharmacyDrugWhere: Prisma.PharmacyDrugWhereInput = {
       pharmacyId,
@@ -87,8 +98,8 @@ export class SearchPharmacyDrugsByNameUseCase {
         this.prisma.generalDrug.findMany({
           where: generalDrugWhere,
 
-          skip,
-          take: limit,
+          skip: generalSkip,
+          take: generalLimit,
 
           orderBy: {
             tradeName: 'asc',
@@ -113,8 +124,8 @@ export class SearchPharmacyDrugsByNameUseCase {
       generalDrugs: this.buildPaginatedResponse(
         generalDrugs.map(mapGeneralDrugForSearch),
         totalGeneralDrugs,
-        page,
-        limit,
+        generalPage,
+        generalLimit,
       ),
     };
   }

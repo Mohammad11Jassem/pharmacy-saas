@@ -19,6 +19,7 @@ import { UpdatePrivateDrugDto } from './dto/update-private-drug.dto';
 import { CurrentPharmacy } from '../../common/decorators/current-pharmacy.decorator';
 import { ListAvailableBatchesQueryDto } from './dto/list-available-batches-query.dto';
 import { SearchPharmacyDrugByNameDto } from './dto/search-pharmacy-drug-by-name.dto';
+import { SearchMyPharmacyDrugsByNameDto } from './dto/search-my-pharmacy-drugs-by-name.dto';
 @Roles(AccountType.PHARMACY)
 @Controller('pharmacy-drugs')
 export class PharmacyDrugsController {
@@ -140,7 +141,15 @@ export class PharmacyDrugsController {
     @ActiveUser('sub') pharmacyId: number,
     @Query() dto: SearchPharmacyDrugByNameDto,
   ) {
-    return this.pharmacyDrugService.searchPharmacyDrugsByName(
+    return this.pharmacyDrugService.searchPharmacyDrugsByName(pharmacyId, dto);
+  }
+
+  @Get('search-my-drugs/by-name')
+  searchMyPharmacyDrugsByName(
+    @ActiveUser('sub') pharmacyId: number,
+    @Query() dto: SearchMyPharmacyDrugsByNameDto,
+  ) {
+    return this.pharmacyDrugService.searchMyPharmacyDrugsByName(
       pharmacyId,
       dto,
     );
