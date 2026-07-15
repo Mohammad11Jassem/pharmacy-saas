@@ -1,3 +1,5 @@
+import { SubscribePharmacyResponseDto } from '../../subscription/dto/subscribe-pharmacy-response.dto';
+
 export type PharmacyAccountOwnerResponseDto = {
   userId: number;
   pharmacyOwnerId: number;
@@ -25,4 +27,5 @@ export type PharmacyAccountResponseDto = {
   owner: PharmacyAccountOwnerResponseDto;
   pharmacy: PharmacyAccountPharmacyResponseDto;
   credential: PharmacyAccountCredentialResponseDto;
+  subscription: SubscribePharmacyResponseDto | null;
 };

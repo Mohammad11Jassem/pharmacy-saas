@@ -573,12 +573,26 @@ import {
   calculateFinalPrice,
   decimalToNumber,
 } from '../helpers/subscription-pricing.helper';
+import { SubscribePharmacyResponseDto } from '../dto/subscribe-pharmacy-response.dto';
 
 @Injectable()
 export class SubscribePharmacyUseCase {
   constructor(private readonly unitOfWork: UnitOfWork) {}
 
-  async execute(pharmacyId: number, dto: SubscribePharmacyDto) {
+  /**
+   * Used by the standalone subscription API.
+   * It creates a new database transaction.
+   */
+  execute(
+    pharmacyId: number,
+    dto: SubscribePharmacyDto,
+  ) : Promise<SubscribePharmacyResponseDto>{
+    return this.unitOfWork.executeSerializable((tx) =>
+      this.executeInsideTransaction(tx, pharmacyId, dto),
+    );
+  }
+
+  async executeInsideTransaction(tx: Prisma.TransactionClient ,pharmacyId: number, dto: SubscribePharmacyDto) {
     /*
      * العملية Transaction.
      *
@@ -591,7 +605,7 @@ export class SubscribePharmacyUseCase {
      *
      * يجب أن تنجح كلها أو تفشل كلها.
      */
-    return this.unitOfWork.executeSerializable(async (tx) => {
+   
       const now = new Date();
 
       // =========================================================
@@ -1160,11 +1174,11 @@ export class SubscribePharmacyUseCase {
         plan: subscription.plan,
 
         // pricing: {
-          basePrice: decimalToNumber(subscription.basePrice),
+        basePrice: decimalToNumber(subscription.basePrice),
 
-          finalPrice: decimalToNumber(subscription.finalPrice),
+        finalPrice: decimalToNumber(subscription.finalPrice),
 
-          currency: subscription.currency,
+        currency: subscription.currency,
         // },
 
         appliedOffer: subscription.appliedOffer
@@ -1187,6 +1201,6 @@ export class SubscribePharmacyUseCase {
             }
           : null,
       };
-    });
+    
   }
 }

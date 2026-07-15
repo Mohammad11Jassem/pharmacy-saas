@@ -9,6 +9,7 @@ import {
 } from 'class-validator';
 import { CreatePharmacyOwnerDto } from '../../pharmacy-owners/dto/create-pharmacy-owner.dto';
 import { CreatePharmacyDto } from './create-pharmacy.dto';
+import { SubscribePharmacyDto } from '../../subscription/dto/subscribe-pharmacy.dto';
 
 export enum OwnerMode {
   NEW = 'NEW',
@@ -48,4 +49,14 @@ export class CreatePharmacyAccountDto {
   @Type(() => CreatePharmacyDto)
   pharmacy!: CreatePharmacyDto;
   
+
+  @ApiProperty({
+    type: SubscribePharmacyDto,
+    description:
+      'The subscription that will be created for the pharmacy',
+  })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => SubscribePharmacyDto)
+  subscription?: SubscribePharmacyDto;
 }

@@ -19,6 +19,9 @@ import { PharmacyAccountResponseDto } from './dto/pharmacy-account-response.dto'
 import { PharmacyStatus } from '../../generated/prisma/enums';
 import { ChangePharmacyStatusDto } from './dto/change-pharmacy-status.dto';
 import { ListPharmaciesQueryDto } from './dto/list-pharmacies-query.dto';
+import { UnitOfWork } from '../../common/TransactionWrapper/unit-of-work';
+import { SubscriptionService } from '../subscription/subscription.service';
+import { SubscribePharmacyResponseDto } from '../subscription/dto/subscribe-pharmacy-response.dto';
 
 type TransactionClient = Prisma.TransactionClient;
 
@@ -53,6 +56,8 @@ export class PharmacyService {
     private readonly pharmacyOwnersService: PharmacyOwnersService,
     private readonly pharmacyCredentialsService: PharmacyCredentialsService,
     private readonly pharmacyAccountResponseMapper: PharmacyAccountResponseMapper,
+    // private readonly unitOfWork: UnitOfWork,
+    private readonly subscriptionService: SubscriptionService,
   ) {}
 
   async createPharmacyAccount(
@@ -73,10 +78,21 @@ export class PharmacyService {
           pharmacy.pharmacyId,
         );
 
+      let subscription: SubscribePharmacyResponseDto | null = null;
+
+      if (dto.subscription) {
+        subscription =
+          await this.subscriptionService.subscribePharmacyInsideTransaction(
+            tx,
+            pharmacy.pharmacyId,
+            dto.subscription,
+          );
+      }
       return {
         owner,
         pharmacy,
         credential,
+        subscription,
       };
     });
 
@@ -269,61 +285,60 @@ export class PharmacyService {
       };
     }
 
-    const [total, pharmacies] =
-      await this.prisma.$transaction([
-        this.prisma.pharmacy.count({
-          where,
-        }),
+    const [total, pharmacies] = await this.prisma.$transaction([
+      this.prisma.pharmacy.count({
+        where,
+      }),
 
-        this.prisma.pharmacy.findMany({
-          where,
-          skip,
-          take: limit,
-          orderBy: {
-            createdAt: 'desc',
-          },
-          select: {
-            pharmacyId: true,
-            pharmacyName: true,
-            // pharmacyCode: true,
-            pharmacistLicenseNo: true,
-            contactPhone: true,
-            email: true,
-            governorate: true,
-            healthDirectorate: true,
-            areaName: true,
-            addressText: true,
-            status: true,
-            openingDate: true,
-            // createdAt: true,
-            // updatedAt: true,
+      this.prisma.pharmacy.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: {
+          createdAt: 'desc',
+        },
+        select: {
+          pharmacyId: true,
+          pharmacyName: true,
+          // pharmacyCode: true,
+          pharmacistLicenseNo: true,
+          contactPhone: true,
+          email: true,
+          governorate: true,
+          healthDirectorate: true,
+          areaName: true,
+          addressText: true,
+          status: true,
+          openingDate: true,
+          // createdAt: true,
+          // updatedAt: true,
 
-            pharmacyOwner: {
-              select: {
-                pharmacyOwnerId: true,
-                // nationalId: true,
+          pharmacyOwner: {
+            select: {
+              pharmacyOwnerId: true,
+              // nationalId: true,
 
-                user: {
-                  select: {
-                    userId: true,
-                    fullName: true,
-                    email: true,
-                    phone: true,
-                    // status: true,
-                  },
+              user: {
+                select: {
+                  userId: true,
+                  fullName: true,
+                  email: true,
+                  phone: true,
+                  // status: true,
                 },
               },
             },
           },
-        }),
-      ]);
-      const mappedPharmacies = pharmacies.map((pharmacy) => ({
+        },
+      }),
+    ]);
+    const mappedPharmacies = pharmacies.map((pharmacy) => ({
       ...pharmacy,
 
       /*
-      * Placeholder until subscription tables are added.
-      * Later this value will be calculated from pharmacy subscriptions.
-      */
+       * Placeholder until subscription tables are added.
+       * Later this value will be calculated from pharmacy subscriptions.
+       */
       hasActiveSubscription: false,
     }));
     const totalPages = Math.ceil(total / limit);
@@ -341,36 +356,24 @@ export class PharmacyService {
     };
   }
 
-   async update(
-    pharmacyId: number,
-    dto: UpdatePharmacyDto,
-  ) {
-    const hasPharmacistLicenseNo =
-      dto.pharmacistLicenseNo !== undefined;
+  async update(pharmacyId: number, dto: UpdatePharmacyDto) {
+    const hasPharmacistLicenseNo = dto.pharmacistLicenseNo !== undefined;
 
-    const hasPharmacyName =
-      dto.pharmacyName !== undefined;
+    const hasPharmacyName = dto.pharmacyName !== undefined;
 
-    const hasContactPhone =
-      dto.contactPhone !== undefined;
+    const hasContactPhone = dto.contactPhone !== undefined;
 
-    const hasGovernorate =
-      dto.governorate !== undefined;
+    const hasGovernorate = dto.governorate !== undefined;
 
-    const hasHealthDirectorate =
-      dto.healthDirectorate !== undefined;
+    const hasHealthDirectorate = dto.healthDirectorate !== undefined;
 
-    const hasAreaName =
-      dto.areaName !== undefined;
+    const hasAreaName = dto.areaName !== undefined;
 
-    const hasAddressText =
-      dto.addressText !== undefined;
+    const hasAddressText = dto.addressText !== undefined;
 
-    const hasStatus =
-      dto.status !== undefined;
+    const hasStatus = dto.status !== undefined;
 
-    const hasOpeningDate =
-      dto.openingDate !== undefined;
+    const hasOpeningDate = dto.openingDate !== undefined;
 
     const hasAnyEditableField =
       hasPharmacistLicenseNo ||
@@ -384,100 +387,78 @@ export class PharmacyService {
       hasOpeningDate;
 
     if (!hasAnyEditableField) {
-      throw new BadRequestException(
-        'At least one editable field is required',
-      );
+      throw new BadRequestException('At least one editable field is required');
     }
 
-    const pharmacy =
-      await this.prisma.pharmacy.findUnique({
+    const pharmacy = await this.prisma.pharmacy.findUnique({
+      where: {
+        pharmacyId,
+      },
+      select: {
+        pharmacyId: true,
+      },
+    });
+
+    if (!pharmacy) {
+      throw new NotFoundException('Pharmacy not found');
+    }
+
+    if (hasPharmacistLicenseNo && dto.pharmacistLicenseNo !== null) {
+      const licenseExists = await this.prisma.pharmacy.findFirst({
         where: {
-          pharmacyId,
+          pharmacistLicenseNo: dto.pharmacistLicenseNo,
+
+          pharmacyId: {
+            not: pharmacyId,
+          },
         },
         select: {
           pharmacyId: true,
         },
       });
 
-    if (!pharmacy) {
-      throw new NotFoundException(
-        'Pharmacy not found',
-      );
-    }
-
-    if (
-      hasPharmacistLicenseNo &&
-      dto.pharmacistLicenseNo !== null
-    ) {
-      const licenseExists =
-        await this.prisma.pharmacy.findFirst({
-          where: {
-            pharmacistLicenseNo:
-              dto.pharmacistLicenseNo,
-
-            pharmacyId: {
-              not: pharmacyId,
-            },
-          },
-          select: {
-            pharmacyId: true,
-          },
-        });
-
       if (licenseExists) {
-        throw new ConflictException(
-          'Pharmacist license number already exists',
-        );
+        throw new ConflictException('Pharmacist license number already exists');
       }
     }
 
     const data: Prisma.PharmacyUpdateInput = {};
 
     if (hasPharmacistLicenseNo) {
-      data.pharmacistLicenseNo =
-        dto.pharmacistLicenseNo;
+      data.pharmacistLicenseNo = dto.pharmacistLicenseNo;
     }
 
     if (hasPharmacyName) {
-      data.pharmacyName =
-        dto.pharmacyName;
+      data.pharmacyName = dto.pharmacyName;
     }
 
     if (hasContactPhone) {
-      data.contactPhone =
-        dto.contactPhone;
+      data.contactPhone = dto.contactPhone;
     }
 
     if (hasGovernorate) {
-      data.governorate =
-        dto.governorate;
+      data.governorate = dto.governorate;
     }
 
     if (hasHealthDirectorate) {
-      data.healthDirectorate =
-        dto.healthDirectorate;
+      data.healthDirectorate = dto.healthDirectorate;
     }
 
     if (hasAreaName) {
-      data.areaName =
-        dto.areaName;
+      data.areaName = dto.areaName;
     }
 
     if (hasAddressText) {
-      data.addressText =
-        dto.addressText;
+      data.addressText = dto.addressText;
     }
 
     if (hasStatus) {
-      data.status =
-        dto.status;
+      data.status = dto.status;
     }
 
     if (hasOpeningDate) {
       data.openingDate =
-        dto.openingDate === null
-          ? null
-          : new Date(dto.openingDate);
+        dto.openingDate === null ? null : new Date(dto.openingDate);
     }
 
     return this.prisma.pharmacy.update({
