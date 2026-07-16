@@ -9,6 +9,7 @@ import { ListPublicSubscriptionPlansUseCase } from './use-cases/list-public-subs
 import { SubscribePharmacyUseCase } from './use-cases/subscribe-pharmacy.usecase';
 import { CreatePlanOfferUseCase } from './use-cases/create-plan-offer.usecase';
 import { CreatePlanOfferDto } from './dto/create-plan-offer.dto';
+import { Prisma } from '../../generated/prisma/client';
 
 @Injectable()
 export class SubscriptionService {
@@ -47,5 +48,17 @@ export class SubscriptionService {
 
   createPlanOffer(planId: number, dto: CreatePlanOfferDto) {
     return this.createPlanOfferUseCase.execute(planId, dto);
+  }
+
+  subscribePharmacyInsideTransaction(
+    tx: Prisma.TransactionClient,
+    pharmacyId: number,
+    dto: SubscribePharmacyDto,
+  ) {
+    return this.subscribePharmacyUseCase.executeInsideTransaction(
+      tx,
+      pharmacyId,
+      dto,
+    );
   }
 }

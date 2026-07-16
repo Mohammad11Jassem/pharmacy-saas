@@ -13,7 +13,7 @@ import { CreatePlanOfferUseCase } from './use-cases/create-plan-offer.usecase';
   controllers: [
     SubscriptionController,
   ],
-
+  exports: [SubscriptionService],
   providers: [
     SubscriptionService,
 
