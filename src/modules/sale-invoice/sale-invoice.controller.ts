@@ -39,6 +39,19 @@ export class SaleInvoiceController {
     return this.saleInvoiceService.findAll(pharmacyId, query);
   }
 
+  @Get(':saleInvoiceId/batches')
+  findBatchesBySaleInvoice(
+    @ActiveUser('sub')
+    pharmacyId: number,
+
+    @Param('saleInvoiceId', ParseIntPipe)
+    saleInvoiceId: number,
+  ) {
+    return this.saleInvoiceService.findBatchesBySaleInvoice(
+      pharmacyId,
+      saleInvoiceId,
+    );
+  }
   @Get(':saleInvoiceId')
   findOne(
     @CurrentPharmacy() pharmacyId: number,

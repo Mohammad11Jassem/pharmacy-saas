@@ -294,6 +294,10 @@ export class FindReturnInvoiceDetailsUseCase {
             saleBaseUnitPrice: this.toNumber(originalSaleItem.baseUnitPrice),
             saleFinalUnitPrice: this.toNumber(originalSaleItem.finalUnitPrice),
             saleTotalPrice: this.toNumber(originalSaleItem.totalPrice),
+            saleDiscountAmount: this.toNumber(originalSaleItem.discountAmount),
+
+            saleNetTotalPrice: this.toNumber(originalSaleItem.netTotalPrice),
+            
           },
 
           returnSummaryForThisAllocation: {

@@ -8,6 +8,8 @@ import {
   CreateActiveIngredientDto,
   UpdateActiveIngredientDto,
 } from '../dto/active-ingredient.dto';
+import { getPaginationParams, toPaginatedResult } from '../../../common/pagination/pagination.util';
+import { SearchActiveIngredientsQueryDto } from '../dto/search-active-ingredients-query.dto';
 
 @Injectable()
 export class ActiveIngredientsService {
@@ -83,5 +85,40 @@ export class ActiveIngredientsService {
     return {
       message: 'Active ingredient deleted successfully',
     };
+  }
+
+  async search(dto: SearchActiveIngredientsQueryDto) {
+    const name = dto.name.trim();
+    const { page, limit, skip, take } = getPaginationParams(
+      dto.page,
+      dto.limit,
+    );
+
+    const where = {
+      ingredientName: {
+        contains: name,
+        mode: 'insensitive' as const,
+      },
+    };
+
+    const [ingredients, total] = await Promise.all([
+      this.prisma.activeIngredient.findMany({
+        where,
+        skip,
+        take,
+        orderBy: {
+          ingredientName: 'asc',
+        },
+        select: {
+          ingredientId: true,
+          ingredientName: true,
+        },
+      }),
+      this.prisma.activeIngredient.count({
+        where,
+      }),
+    ]);
+
+    return toPaginatedResult(ingredients, total, page, limit);
   }
 }

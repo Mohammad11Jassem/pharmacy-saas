@@ -19,6 +19,10 @@ import { SearchPharmacyDrugsByBarcodeUseCase } from './use-cases/search-pharmacy
 import { SearchPharmacyDrugsByNameUseCase } from './use-cases/search-pharmacy-drugs-by-name.usecase';
 import { SearchMyPharmacyDrugsByNameUseCase } from './use-cases/search-my-pharmacy-drugs-by-name.usecase';
 import { SearchMyPharmacyDrugsByNameDto } from './dto/search-my-pharmacy-drugs-by-name.dto';
+import { GetPharmacyDrugAlternativesUseCase } from './use-cases/get-pharmacy-drug-alternatives.usecase';
+import { ListDrugAlternativesQueryDto } from './dto/list-drug-alternatives-query.dto';
+import { SearchPharmacyDrugsByIngredientsUseCase } from './use-cases/search-pharmacy-drugs-by-ingredients.usecase';
+import { SearchPharmacyDrugsByIngredientsDto } from './dto/search-pharmacy-drugs-by-ingredients.dto';
 
 @Injectable()
 export class PharmacyDrugService {
@@ -45,6 +49,8 @@ export class PharmacyDrugService {
 
     private readonly searchPharmacyDrugsByNameUseCase: SearchPharmacyDrugsByNameUseCase,
     private readonly searchMyPharmacyDrugsByNameUseCase: SearchMyPharmacyDrugsByNameUseCase,
+    private readonly getPharmacyDrugAlternativesUseCase: GetPharmacyDrugAlternativesUseCase,
+    private readonly searchPharmacyDrugsByIngredientsUseCase: SearchPharmacyDrugsByIngredientsUseCase,
   ) {}
 
   addGeneralDrug(pharmacyId: number, dto: AddGeneralDrugDto) {
@@ -129,5 +135,26 @@ export class PharmacyDrugService {
     dto: SearchMyPharmacyDrugsByNameDto,
   ) {
     return this.searchMyPharmacyDrugsByNameUseCase.execute(pharmacyId, dto);
+  }
+
+  getPharmacyDrugAlternatives(
+    pharmacyId: number,
+    pharmacyDrugId: number,
+    query: ListDrugAlternativesQueryDto,
+  ) {
+    return this.getPharmacyDrugAlternativesUseCase.execute(
+      pharmacyId,
+      pharmacyDrugId,
+      query,
+    );
+  }
+  searchPharmacyDrugsByIngredients(
+    pharmacyId: number,
+    dto: SearchPharmacyDrugsByIngredientsDto,
+  ) {
+    return this.searchPharmacyDrugsByIngredientsUseCase.execute(
+      pharmacyId,
+      dto,
+    );
   }
 }

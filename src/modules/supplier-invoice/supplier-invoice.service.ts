@@ -255,6 +255,7 @@ export class SupplierInvoiceService {
       invoiceNumber,
       fromDate,
       toDate,
+      pharmacyDrugId,
     } = filters;
 
     return this.prisma.supplierInvoice.findMany({
@@ -276,14 +277,23 @@ export class SupplierInvoiceService {
               },
             }
           : {}),
+        ...(pharmacyDrugId
+          ? {
+              items: {
+                some: {
+                  pharmacyDrugId,
+                },
+              },
+            }
+          : {}),
       },
       include: {
         supplier: true,
-        // items: {
-        //   include: {
-        //     pharmacyDrug: true,
-        //   },
-        // },
+        items: {
+          include: {
+            pharmacyDrug: true,
+          },
+        },
       },
       orderBy: {
         createdAt: 'desc',

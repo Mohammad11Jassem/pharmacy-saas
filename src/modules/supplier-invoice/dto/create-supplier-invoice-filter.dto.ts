@@ -1,6 +1,16 @@
 import { Type } from 'class-transformer';
-import { IsDateString, IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
-import { PaymentStatus, SupplierInvoiceStatus } from '../../../generated/prisma/enums';
+import {
+  IsDateString,
+  IsEnum,
+  IsInt,
+  IsOptional,
+  IsString,
+  Min,
+} from 'class-validator';
+import {
+  PaymentStatus,
+  SupplierInvoiceStatus,
+} from '../../../generated/prisma/enums';
 
 export class SupplierInvoiceFilterDto {
   @IsOptional()
@@ -28,4 +38,10 @@ export class SupplierInvoiceFilterDto {
   @IsOptional()
   @IsDateString()
   toDate?: string;
+
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  pharmacyDrugId?: number;
 }

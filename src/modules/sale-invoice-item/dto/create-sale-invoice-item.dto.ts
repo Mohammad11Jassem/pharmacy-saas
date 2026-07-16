@@ -78,7 +78,7 @@ export class CreateSaleInvoiceItemDto {
    */
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })
-  @Min(0)
+  @Min(0.01)
   @IsOptional()
   manualUnitPrice?: number;
 }

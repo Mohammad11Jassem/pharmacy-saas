@@ -6,6 +6,7 @@ import { CreateSaleInvoiceUseCase } from './use-cases/create-sale-invoice.usecas
 import { PatientModule } from '../patient/patient.module';
 import { FindAllSaleInvoicesUseCase } from './use-cases/find-all-sale-invoices.usecase';
 import { FindSaleInvoiceByIdUseCase } from './use-cases/find-sale-invoice-by-id.usecase';
+import { FindSaleInvoiceBatchesUseCase } from './use-cases/find-sale-invoice-batches.usecase';
 
 @Module({
   imports: [PatientModule],
@@ -16,6 +17,7 @@ import { FindSaleInvoiceByIdUseCase } from './use-cases/find-sale-invoice-by-id.
     CreateSaleInvoiceUseCase,
     FindAllSaleInvoicesUseCase,
     FindSaleInvoiceByIdUseCase,
+    FindSaleInvoiceBatchesUseCase,
   ],
 })
 export class SaleInvoiceModule {}

@@ -30,6 +30,11 @@ type ComputedSaleItem = {
   requestedBatchAllocations?: RequestedBatchAllocation[];
 };
 
+type DiscountedSaleItem = ComputedSaleItem & {
+  discountAmount: number;
+  netTotalPrice: number;
+};
+
 type SaleDrugContext = {
   pharmacyDrugId: number;
   sellPart: boolean;
@@ -158,8 +163,17 @@ export class CreateSaleInvoiceUseCase {
           'discount must not be greater than subtotal',
         );
       }
+      // const totalAmount = this.roundMoney(subtotal - discount);
 
-      const totalAmount = this.roundMoney(subtotal - discount);
+      // Distribute the invoice discount across all items
+      const discountedItems = this.distributeInvoiceDiscount(
+        computedItems,
+        discount,
+      );
+
+      const totalAmount = this.roundMoney(
+        discountedItems.reduce((sum, item) => sum + item.netTotalPrice, 0),
+      );
 
       /**
        * 3. Create invoice records.
@@ -191,7 +205,7 @@ export class CreateSaleInvoiceUseCase {
        * 4. Create sale items and batch allocation records.
        */
       for (let index = 0; index < computedItems.length; index++) {
-        const item = computedItems[index];
+        const item = discountedItems[index];
         const allocations = allocationsByItemIndex[index];
 
         const saleInvoiceItem = await tx.saleInvoiceItem.create({
@@ -205,6 +219,8 @@ export class CreateSaleInvoiceUseCase {
             extraPercentage: item.extraPercentage,
             finalUnitPrice: item.finalUnitPrice,
             totalPrice: item.totalPrice,
+            discountAmount: item.discountAmount,
+            netTotalPrice: item.netTotalPrice,
           },
         });
 
@@ -605,6 +621,98 @@ export class CreateSaleInvoiceUseCase {
     );
   }
 
+  private distributeInvoiceDiscount(
+    items: ComputedSaleItem[],
+    discount: number,
+  ): DiscountedSaleItem[] {
+    const discountCents = this.toCents(discount);
+
+    // No discount
+    if (discountCents === 0) {
+      return items.map((item) => ({
+        ...item,
+        discountAmount: 0,
+        netTotalPrice: item.totalPrice,
+      }));
+    }
+
+    const itemTotalCents = items.map((item) => this.toCents(item.totalPrice));
+
+    const subtotalCents = itemTotalCents.reduce((sum, value) => sum + value, 0);
+
+    if (subtotalCents <= 0) {
+      throw new BadRequestException(
+        'subtotal must be greater than 0 to distribute discount',
+      );
+    }
+
+    const subtotalBigInt = BigInt(subtotalCents);
+
+    /**
+     * Calculate each item's proportional discount.
+     * We first allocate full cents only.
+     */
+    const allocations = itemTotalCents.map((totalCents, index) => {
+      const numerator = BigInt(discountCents) * BigInt(totalCents);
+
+      return {
+        index,
+        discountCents: Number(numerator / subtotalBigInt),
+        remainder: numerator % subtotalBigInt,
+      };
+    });
+
+    let remainingCents =
+      discountCents -
+      allocations.reduce((sum, item) => sum + item.discountCents, 0);
+
+    /**
+     * Give remaining cents to items with the largest remainder.
+     * This guarantees the distributed discount equals the invoice discount.
+     */
+    const allocationOrder = [...allocations].sort((a, b) => {
+      if (a.remainder === b.remainder) {
+        return a.index - b.index;
+      }
+
+      return a.remainder > b.remainder ? -1 : 1;
+    });
+
+    for (
+      let index = 0;
+      index < allocationOrder.length && remainingCents > 0;
+      index++
+    ) {
+      allocationOrder[index].discountCents += 1;
+      remainingCents -= 1;
+    }
+
+    const discountByItemIndex = new Map(
+      allocations.map((item) => [item.index, item.discountCents]),
+    );
+
+    return items.map((item, index) => {
+      const itemDiscountCents = discountByItemIndex.get(index) ?? 0;
+
+      const totalPriceCents = itemTotalCents[index];
+
+      return {
+        ...item,
+
+        discountAmount: this.fromCents(itemDiscountCents),
+
+        netTotalPrice: this.fromCents(totalPriceCents - itemDiscountCents),
+      };
+    });
+  }
+
+  private toCents(value: number): number {
+    return Math.round(value * 100);
+  }
+
+  private fromCents(value: number): number {
+    return value / 100;
+  }
   private roundMoney(value: number): number {
     return Number(value.toFixed(2));
   }
@@ -635,6 +743,10 @@ export class CreateSaleInvoiceUseCase {
       pd."pharmacy_id" = ${pharmacyId}
       AND b."pharmacy_drug_id" IN (${Prisma.join(uniqueDrugIds)})
       AND b."status" = 'ACTIVE'
+      AND (
+        -- b."expiry_date" IS NULL OR
+        b."expiry_date" >= CURRENT_DATE
+      )
     ORDER BY
       b."pharmacy_drug_id" ASC,
       b."expiry_date" ASC NULLS LAST,

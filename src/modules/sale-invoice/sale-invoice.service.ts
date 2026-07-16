@@ -5,6 +5,7 @@ import { CreateSaleInvoiceUseCase } from './use-cases/create-sale-invoice.usecas
 import { GetSaleInvoicesDto } from './dto/get-sale-invoices.dto';
 import { FindAllSaleInvoicesUseCase } from './use-cases/find-all-sale-invoices.usecase';
 import { FindSaleInvoiceByIdUseCase } from './use-cases/find-sale-invoice-by-id.usecase';
+import { FindSaleInvoiceBatchesUseCase } from './use-cases/find-sale-invoice-batches.usecase';
 
 @Injectable()
 export class SaleInvoiceService {
@@ -12,6 +13,7 @@ export class SaleInvoiceService {
     private readonly createSaleInvoiceUseCase: CreateSaleInvoiceUseCase,
     private readonly findAllSaleInvoicesUseCase: FindAllSaleInvoicesUseCase,
     private readonly findSaleInvoiceByIdUseCase: FindSaleInvoiceByIdUseCase,
+    private readonly findSaleInvoiceBatchesUseCase: FindSaleInvoiceBatchesUseCase,
   ) {}
   create(pharmacyId: number, dto: CreateSaleInvoiceDto) {
     return this.createSaleInvoiceUseCase.execute(pharmacyId, dto);
@@ -21,6 +23,12 @@ export class SaleInvoiceService {
   }
   findOne(pharmacyId: number, saleInvoiceId: number) {
     return this.findSaleInvoiceByIdUseCase.execute(pharmacyId, saleInvoiceId);
+  }
+  findBatchesBySaleInvoice(pharmacyId: number, saleInvoiceId: number) {
+    return this.findSaleInvoiceBatchesUseCase.execute(
+      pharmacyId,
+      saleInvoiceId,
+    );
   }
   update(id: number, updateSaleInvoiceDto: UpdateSaleInvoiceDto) {
     return `This action updates a #${id} saleInvoice`;

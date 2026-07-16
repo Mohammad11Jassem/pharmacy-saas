@@ -14,6 +14,8 @@ import { FindPharmacyDrugByBarcodeUseCase } from './use-cases/find-pharmacy-drug
 import { SearchPharmacyDrugsByBarcodeUseCase } from './use-cases/search-pharmacy-drugs-by-barcode.usecase';
 import { SearchPharmacyDrugsByNameUseCase } from './use-cases/search-pharmacy-drugs-by-name.usecase';
 import { SearchMyPharmacyDrugsByNameUseCase } from './use-cases/search-my-pharmacy-drugs-by-name.usecase';
+import { GetPharmacyDrugAlternativesUseCase } from './use-cases/get-pharmacy-drug-alternatives.usecase';
+import { SearchPharmacyDrugsByIngredientsUseCase } from './use-cases/search-pharmacy-drugs-by-ingredients.usecase';
 
 @Module({
   controllers: [PharmacyDrugsController],
@@ -33,6 +35,8 @@ import { SearchMyPharmacyDrugsByNameUseCase } from './use-cases/search-my-pharma
     SearchPharmacyDrugsByBarcodeUseCase,
     SearchPharmacyDrugsByNameUseCase,
     SearchMyPharmacyDrugsByNameUseCase,
+    GetPharmacyDrugAlternativesUseCase,
+    SearchPharmacyDrugsByIngredientsUseCase,
   ],
 })
 export class PharmacyDrugsModule {}

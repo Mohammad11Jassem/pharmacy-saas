@@ -20,6 +20,8 @@ import { CurrentPharmacy } from '../../common/decorators/current-pharmacy.decora
 import { ListAvailableBatchesQueryDto } from './dto/list-available-batches-query.dto';
 import { SearchPharmacyDrugByNameDto } from './dto/search-pharmacy-drug-by-name.dto';
 import { SearchMyPharmacyDrugsByNameDto } from './dto/search-my-pharmacy-drugs-by-name.dto';
+import { ListDrugAlternativesQueryDto } from './dto/list-drug-alternatives-query.dto';
+import { SearchPharmacyDrugsByIngredientsDto } from './dto/search-pharmacy-drugs-by-ingredients.dto';
 @Roles(AccountType.PHARMACY)
 @Controller('pharmacy-drugs')
 export class PharmacyDrugsController {
@@ -150,6 +152,32 @@ export class PharmacyDrugsController {
     @Query() dto: SearchMyPharmacyDrugsByNameDto,
   ) {
     return this.pharmacyDrugService.searchMyPharmacyDrugsByName(
+      pharmacyId,
+      dto,
+    );
+  }
+
+  @Get(':pharmacyDrugId/alternatives')
+  getPharmacyDrugAlternatives(
+    @ActiveUser('sub') pharmacyId: number,
+    @Param('pharmacyDrugId', ParseIntPipe)
+    pharmacyDrugId: number,
+    @Query() query: ListDrugAlternativesQueryDto,
+  ) {
+    return this.pharmacyDrugService.getPharmacyDrugAlternatives(
+      pharmacyId,
+      pharmacyDrugId,
+      query,
+    );
+  }
+
+
+  @Post('search-by-ingredients')
+  searchPharmacyDrugsByIngredients(
+    @ActiveUser('sub') pharmacyId: number,
+    @Body() dto: SearchPharmacyDrugsByIngredientsDto,
+  ) {
+    return this.pharmacyDrugService.searchPharmacyDrugsByIngredients(
       pharmacyId,
       dto,
     );

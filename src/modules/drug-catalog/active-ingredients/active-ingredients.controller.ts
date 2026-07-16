@@ -7,6 +7,7 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
 } from '@nestjs/common';
 import { Auth } from '../../../iam/authentication/decorators/auth.decorator';
 import { AuthType } from '../../../iam/authentication/enums/auth-type.enum';
@@ -17,6 +18,7 @@ import {
   CreateActiveIngredientDto,
   UpdateActiveIngredientDto,
 } from '../dto/active-ingredient.dto';
+import { SearchActiveIngredientsQueryDto } from '../dto/search-active-ingredients-query.dto';
 
 @Auth(AuthType.Bearer)
 @Roles(AccountType.ADMIN, AccountType.MEDICAL_TEAM)
@@ -27,7 +29,7 @@ export class ActiveIngredientsController {
   ) {}
 
   @Post()
- async create(@Body() dto: CreateActiveIngredientDto) {
+  async create(@Body() dto: CreateActiveIngredientDto) {
     return await this.activeIngredientsService.create(dto);
   }
 
@@ -35,6 +37,12 @@ export class ActiveIngredientsController {
   @Get()
   async findAll() {
     return await this.activeIngredientsService.findAll();
+  }
+
+  @Roles(AccountType.ADMIN, AccountType.MEDICAL_TEAM, AccountType.PHARMACY)
+  @Get('search')
+  search(@Query() query: SearchActiveIngredientsQueryDto) {
+    return this.activeIngredientsService.search(query);
   }
 
   @Roles(AccountType.ADMIN, AccountType.MEDICAL_TEAM, AccountType.PHARMACY)
