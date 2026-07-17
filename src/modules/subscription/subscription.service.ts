@@ -10,6 +10,9 @@ import { SubscribePharmacyUseCase } from './use-cases/subscribe-pharmacy.usecase
 import { CreatePlanOfferUseCase } from './use-cases/create-plan-offer.usecase';
 import { CreatePlanOfferDto } from './dto/create-plan-offer.dto';
 import { Prisma } from '../../generated/prisma/client';
+import { FindPharmacySubscriptionsUseCase } from './use-cases/find-pharmacy-subscriptions.usecase';
+import { ListPharmacySubscriptionsDto } from './dto/list-pharmacy-subscriptions.dto';
+import { PharmacySubscriptionsResponseDto } from './dto/pharmacy-subscriptions-response.dto';
 
 @Injectable()
 export class SubscriptionService {
@@ -24,6 +27,7 @@ export class SubscriptionService {
 
     private readonly listPharmaciesWithOffersUseCase: ListPharmaciesWithOffersUseCase,
     private readonly createPlanOfferUseCase: CreatePlanOfferUseCase,
+    private readonly findPharmacySubscriptionsUseCase: FindPharmacySubscriptionsUseCase,
   ) {}
 
   listPublicPlans() {
@@ -60,5 +64,12 @@ export class SubscriptionService {
       pharmacyId,
       dto,
     );
+  }
+
+  findPharmacySubscriptions(
+    pharmacyId: number,
+    dto: ListPharmacySubscriptionsDto,
+  ): Promise<PharmacySubscriptionsResponseDto> {
+    return this.findPharmacySubscriptionsUseCase.execute(pharmacyId, dto);
   }
 }
