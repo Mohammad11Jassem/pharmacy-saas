@@ -19,6 +19,7 @@ import { ListSubscriptionPharmaciesDto } from './dto/list-subscription-pharmacie
 import { SubscribePharmacyDto } from './dto/subscribe-pharmacy.dto';
 import { SubscriptionService } from './subscription.service';
 import { CreatePlanOfferDto } from './dto/create-plan-offer.dto';
+import { ListPharmacySubscriptionsDto } from './dto/list-pharmacy-subscriptions.dto';
 
 @ApiTags('Subscription')
 @Controller('subscriptions')
@@ -119,5 +120,16 @@ export class SubscriptionController {
     dto: CreatePlanOfferDto,
   ) {
     return this.subscriptionService.createPlanOffer(planId, dto);
+  }
+
+  @Get('admin/pharmacies/:pharmacyId/subscriptions')
+  @Roles(AccountType.ADMIN)
+  findPharmacySubscriptions(
+    @Param('pharmacyId', ParseIntPipe)
+    pharmacyId: number,
+    @Query()
+    dto: ListPharmacySubscriptionsDto,
+  ) {
+    return this.subscriptionService.findPharmacySubscriptions(pharmacyId, dto);
   }
 }
