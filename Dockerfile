@@ -148,9 +148,18 @@ FROM dependencies AS builder
 
 WORKDIR /app
 
+# COPY . .
+
+# RUN npx prisma generate
+
+# RUN npm run build
+
 COPY . .
 
-RUN npx prisma generate
+# Prisma generate does not connect to the database,
+# but prisma.config.ts requires DATABASE_URL while loading.
+RUN DATABASE_URL="postgresql://build_user:build_password@127.0.0.1:5432/build_db?schema=public" \
+    npx prisma generate
 
 RUN npm run build
 
