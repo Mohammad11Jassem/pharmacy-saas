@@ -1,0 +1,33 @@
+# Installed and generated files
+node_modules
+dist
+coverage
+
+# Git files
+.git
+.gitignore
+
+# Local environment files and secrets
+.env
+.env.*
+!.env.example
+
+# Logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Tests and local files
+test
+*.spec.ts
+
+# Editor and operating-system files
+.vscode
+.idea
+.DS_Store
+Thumbs.db
+
+# Archives
+*.zip
+*.rar
