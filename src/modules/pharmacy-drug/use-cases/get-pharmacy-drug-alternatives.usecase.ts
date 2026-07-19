@@ -65,10 +65,25 @@ export class GetPharmacyDrugAlternativesUseCase {
           candidate !== null,
       );
 
+    // const stockByPharmacyDrugId = await this.getAvailableStockByDrug(
+    //   pharmacyId,
+    //   classifiedCandidates.map((item) => item.pharmacyDrugId),
+    // );
     const stockByPharmacyDrugId = await this.getAvailableStockByDrug(
       pharmacyId,
-      classifiedCandidates.map((item) => item.pharmacyDrugId),
+      [
+        target.pharmacyDrugId,
+
+        ...classifiedCandidates.map(
+          (item) => item.pharmacyDrugId,
+        ),
+      ],
     );
+
+    const targetAvailableBaseQuantity =
+    stockByPharmacyDrugId.get(
+      target.pharmacyDrugId,
+    ) ?? 0;
 
     const availableAlternatives: AlternativeCandidate[] = classifiedCandidates
       .map((candidate) => ({
@@ -90,7 +105,11 @@ export class GetPharmacyDrugAlternativesUseCase {
     );
 
     return {
-      targetDrug: mapAlternativeTargetResponse(target),
+      // targetDrug: mapAlternativeTargetResponse(target),
+      targetDrug: mapAlternativeTargetResponse(
+        target,
+        targetAvailableBaseQuantity,
+      ),
       alternatives: toPaginatedResult(
         paginatedAlternatives.map(mapAlternativeCandidateResponse),
         availableAlternatives.length,

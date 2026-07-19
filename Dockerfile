@@ -161,8 +161,16 @@ COPY . .
 RUN DATABASE_URL="postgresql://build_user:build_password@127.0.0.1:5432/build_db?schema=public" \
     npx prisma generate
 
-RUN npm run build
+# RUN npm run build
+# Remove stale build metadata and compile all source files from scratch
+RUN find /app -maxdepth 2 -name "*.tsbuildinfo" -delete \
+    && rm -rf /app/dist \
+    && npm run build \
+    && test -f /app/dist/main.js \
+    && test -f /app/dist/generated/prisma/client.js \
+    && test -f /app/dist/generated/prisma/enums.js
 
+    
 
 # ---------------------------------------------------------
 # Stage 3: Image used only for Prisma migrations

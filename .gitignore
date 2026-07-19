@@ -61,3 +61,6 @@ src/generated/prisma/
 
 # تم توقيفه عند الرفع على digitalOcean
 # prisma/migrations
+
+# TypeScript incremental build metadata
+*.tsbuildinfo

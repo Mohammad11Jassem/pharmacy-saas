@@ -150,6 +150,7 @@ export function compareAlternativeCandidates(
 
 export function mapAlternativeTargetResponse(
   target: UnifiedAlternativeDrugProfile,
+  availableBaseQuantity: number,
 ) {
   return {
     pharmacyDrugId: target.pharmacyDrugId,
@@ -157,6 +158,28 @@ export function mapAlternativeTargetResponse(
     source: target.source,
     dosageForm: target.dosageForm,
     ingredients: mapIngredientsResponse(target.ingredients),
+    unitsPerBox: target.unitsPerBox,
+
+    sellPart: target.sellPart,
+
+    netPrice: target.netPrice,
+
+    consumerPrice: target.consumerPrice,
+
+    stock: {
+      availableBaseQuantity,
+
+      availableFullBoxes:
+        target.unitsPerBox > 0
+          ? Math.floor(
+              availableBaseQuantity /
+                target.unitsPerBox,
+            )
+          : 0,
+
+      isAvailable:
+        availableBaseQuantity > 0,
+    },
   };
 }
 

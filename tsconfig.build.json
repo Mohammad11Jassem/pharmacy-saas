@@ -4,11 +4,28 @@
 // }
 
 
+// {
+//   "extends": "./tsconfig.json",
+//   "compilerOptions": {
+//     "rootDir": "./src",
+//     "outDir": "./dist"
+//   },
+//   "include": ["src/**/*.ts"],
+//   "exclude": [
+//     "node_modules",
+//     "test",
+//     "dist",
+//     "**/*.spec.ts"
+//   ]
+// }
+
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
     "rootDir": "./src",
-    "outDir": "./dist"
+    "outDir": "./dist",
+    "incremental": false,
+    "noEmitOnError": true
   },
   "include": ["src/**/*.ts"],
   "exclude": [
