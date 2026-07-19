@@ -247,7 +247,25 @@ export class SupplierInvoiceService {
           },
 
           include: {
-            // pharmacyDrug: true,
+              pharmacyDrug: {
+                select: {
+                  drug: {
+                    select: {
+                      generalDrug: {
+                        select: {
+                          tradeName: true,
+                        },
+                      },
+
+                      privateDrug: {
+                        select: {
+                          tradeName: true,
+                        },
+                      },
+                    },
+                  },
+                },
+              },
 
             batches: {
               // Remove timestamps from every batch.
@@ -265,6 +283,18 @@ export class SupplierInvoiceService {
       throw new NotFoundException('Supplier invoice not found');
     }
 
-    return invoice;
+    // return invoice;
+    return {
+      ...invoice,
+
+      items: invoice.items.map(({ pharmacyDrug, ...item }) => ({
+        ...item,
+
+        tradeName:
+          pharmacyDrug.drug.generalDrug?.tradeName ??
+          pharmacyDrug.drug.privateDrug?.tradeName ??
+          null,
+      })),
+    };
   }
 }
