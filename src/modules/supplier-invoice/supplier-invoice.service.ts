@@ -111,111 +111,6 @@ export class SupplierInvoiceService {
     });
   }
 
-  // async create(pharmacyId: number, dto: CreateSupplierInvoiceDto) {
-  //   if (!Array.isArray(dto.items) || dto.items.length === 0) {
-  //     throw new BadRequestException('items must be a non-empty array');
-  //   }
-
-  //   return this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
-  //     await this.assertSupplierBelongsToPharmacy(
-  //       dto.supplierId,
-  //       pharmacyId,
-  //       tx,
-  //     );
-
-  //     await this.assertPharmacyDrugsBelongToPharmacy(
-  //       dto.items.map((item) => item.pharmacyDrugId),
-  //       pharmacyId,
-  //       tx,
-  //     );
-
-  //     const computedItems = dto.items.map((item) => {
-  //       const quantity = Number(item.quantity);
-  //       const netUnitPrice = Number(item.netUnitPrice);
-  //       const totalPrice = Number((quantity * netUnitPrice).toFixed(2));
-
-  //       if (quantity <= 0) {
-  //         throw new BadRequestException(
-  //           `quantity must be greater than 0 for pharmacyDrugId ${item.pharmacyDrugId}`,
-  //         );
-  //       }
-
-  //       if (netUnitPrice < 0) {
-  //         throw new BadRequestException(
-  //           `netUnitPrice must not be negative for pharmacyDrugId ${item.pharmacyDrugId}`,
-  //         );
-  //       }
-
-  //       return {
-  //         pharmacyDrugId: item.pharmacyDrugId,
-  //         quantity,
-  //         netUnitPrice,
-  //         totalPrice,
-  //         notes: item.notes,
-  //       };
-  //     });
-
-  //     const subtotal = computedItems.reduce(
-  //       (sum, item) => sum + item.totalPrice,
-  //       0,
-  //     );
-
-  //     const discount = dto.discount ? Number(dto.discount) : 0;
-
-  //     if (discount < 0) {
-  //       throw new BadRequestException('discount must not be negative');
-  //     }
-
-  //     if (discount > subtotal) {
-  //       throw new BadRequestException(
-  //         'discount must not be greater than subtotal',
-  //       );
-  //     }
-
-  //     const totalPrice = Number((subtotal - discount).toFixed(2));
-
-  //     const invoiceDate = dto.invoiceDate
-  //       ? new Date(dto.invoiceDate)
-  //       : new Date();
-
-  //     return tx.supplierInvoice.create({
-  //       data: {
-  //         supplierId: dto.supplierId,
-  //         invoiceNumber: dto.invoiceNumber ?? undefined,
-  //         invoiceDate,
-  //         subtotal,
-  //         discount,
-  //         totalPrice,
-  //         notes: dto.notes ?? undefined,
-  //         status: SupplierInvoiceStatus.PENDING,
-
-  //         items: {
-  //           create: computedItems.map((item) => ({
-  //             pharmacyDrug: {
-  //               connect: {
-  //                 pharmacyDrugId: item.pharmacyDrugId,
-  //               },
-  //             },
-  //             quantity: item.quantity,
-  //             netUnitPrice: item.netUnitPrice,
-  //             totalPrice: item.totalPrice,
-  //             notes: item.notes ?? undefined,
-  //           })),
-  //         },
-  //       },
-  //       include: {
-  //         supplier: true,
-  //         items: {
-  //           include: {
-  //             pharmacyDrug: true,
-  //             batches: true,
-  //           },
-  //         },
-  //       },
-  //     });
-  //   });
-  // }
-
   private async assertSupplierBelongsToPharmacy(
     supplierId: number,
     pharmacyId: number,
@@ -302,19 +197,65 @@ export class SupplierInvoiceService {
   }
 
   async findOne(pharmacyId: number, id: number) {
+    // const invoice = await this.prisma.supplierInvoice.findFirst({
+    //   where: {
+    //     supplierInvoiceId: id,
+    //     supplier: {
+    //       pharmacyId,
+    //     },
+    //   },
+    //   include: {
+    //     supplier: true,
+    //     items: {
+    //       include: {
+    //         // pharmacyDrug: true,
+    //         batches: true,
+    //       },
+    //     },
+    //   },
+    // });
+
     const invoice = await this.prisma.supplierInvoice.findFirst({
       where: {
         supplierInvoiceId: id,
+
         supplier: {
           pharmacyId,
         },
       },
+
+      // Remove timestamps from the supplier invoice.
+      omit: {
+        createdAt: true,
+        updatedAt: true,
+      },
+
       include: {
-        supplier: true,
+        supplier: {
+          // Remove timestamps from the supplier.
+          omit: {
+            createdAt: true,
+            updatedAt: true,
+          },
+        },
+
         items: {
+          // Remove timestamps from every invoice item.
+          omit: {
+            createdAt: true,
+            updatedAt: true,
+          },
+
           include: {
-            pharmacyDrug: true,
-            batches: true,
+            // pharmacyDrug: true,
+
+            batches: {
+              // Remove timestamps from every batch.
+              omit: {
+                createdAt: true,
+                updatedAt: true,
+              },
+            },
           },
         },
       },
