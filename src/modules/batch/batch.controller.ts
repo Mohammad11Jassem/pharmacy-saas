@@ -19,6 +19,7 @@ import { AuthType } from '../../iam/authentication/enums/auth-type.enum';
 import { Roles } from '../../iam/authorization/decorators/roles.decorator';
 import { AccountType } from '../../generated/prisma/enums';
 import { AddOpeningStockBatchesDto } from './dto/add-opening-stock-batches.dto';
+import { GetPharmacyDrugBatchesQueryDto } from './dto/get-pharmacy-drug-batches-query.dto';
 @Controller('batch')
 export class BatchController {
   constructor(private readonly batchService: BatchService) {}
@@ -52,8 +53,13 @@ export class BatchController {
   findByPharmacyDrug(
     @CurrentPharmacy() pharmacyId: number,
     @Param('pharmacyDrugId', ParseIntPipe) pharmacyDrugId: number,
+    @Query() query: GetPharmacyDrugBatchesQueryDto,
   ) {
-    return this.batchService.findByPharmacyDrug(pharmacyId, pharmacyDrugId);
+    return this.batchService.findByPharmacyDrug(
+      pharmacyId,
+      pharmacyDrugId,
+      query,
+    );
   }
 
   @Roles(AccountType.PHARMACY)

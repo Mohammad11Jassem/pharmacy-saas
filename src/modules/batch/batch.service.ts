@@ -9,6 +9,11 @@ import { AddBatchesToSupplierInvoiceDto } from './dto/add-batches-to-supplier-in
 import { AddOpeningStockBatchesDto } from './dto/add-opening-stock-batches.dto';
 import { CreateSupplierInvoiceItemBatchDto } from './dto/create-batch.dto';
 import { UpdateBatchDto } from './dto/update-batch.dto';
+import { GetPharmacyDrugBatchesQueryDto } from './dto/get-pharmacy-drug-batches-query.dto';
+import {
+  getPaginationParams,
+  toPaginatedResult,
+} from '../../common/pagination/pagination.util';
 
 type SupplierInvoiceForStocking = Prisma.SupplierInvoiceGetPayload<{
   include: {
@@ -67,34 +72,6 @@ export class BatchService {
     return `This action removes a #${id} batch`;
   }
 
-  // async addBatchesToInvoice(
-  //   pharmacyId: number,
-  //   supplierInvoiceId: number,
-  //   dto: AddBatchesToSupplierInvoiceDto,
-  // ): Promise<SupplierInvoiceWithDetails> {
-  //   this.validateBatchesPayload(dto.batches);
-
-  //   return this.prisma.$transaction(async (tx) => {
-  //     const invoice = await this.findSupplierInvoiceForStockingOrThrow(
-  //       tx,
-  //       pharmacyId,
-  //       supplierInvoiceId,
-  //     );
-
-  //     const invoiceItemsById = this.buildInvoiceItemsMap(invoice.items);
-
-  //     this.validateRequestedBatchQuantities(dto, invoiceItemsById);
-
-  //     await this.createInvoiceBatches(tx, dto, invoice, invoiceItemsById);
-
-  //     return this.findSupplierInvoiceWithDetailsOrThrow(
-  //       tx,
-  //       pharmacyId,
-  //       supplierInvoiceId,
-  //     );
-  //   });
-  // }
-
   async addBatchesToInvoice(
     pharmacyId: number,
     supplierInvoiceId: number,
@@ -144,26 +121,105 @@ export class BatchService {
     });
   }
 
-  async findByPharmacyDrug(pharmacyId: number, pharmacyDrugId: number) {
-    return this.prisma.batch.findMany({
-      where: {
-        pharmacyDrugId,
-        pharmacyDrug: {
-          pharmacyId,
-        },
+  async findByPharmacyDrug(
+    pharmacyId: number,
+    pharmacyDrugId: number,
+    query: GetPharmacyDrugBatchesQueryDto,
+  ) {
+    const { fromDate, toDate, supplierId } = query;
+
+    const { page, limit, skip, take } = getPaginationParams(
+      query.page,
+      query.limit,
+    );
+
+    if (
+      fromDate &&
+      toDate &&
+      new Date(`${fromDate}T00:00:00.000Z`) >
+        new Date(`${toDate}T00:00:00.000Z`)
+    ) {
+      throw new BadRequestException(
+        'fromDate must be before or equal to toDate',
+      );
+    }
+    const where: Prisma.BatchWhereInput = {
+      pharmacyDrugId,
+
+      // ضمان أن الدواء تابع للصيدلية المسجلة حالياً.
+      pharmacyDrug: {
+        pharmacyId,
       },
-      include: {
-        pharmacyDrug: true,
-        supplierInvoiceItem: {
-          include: {
-            supplierInvoice: true,
+
+      ...(fromDate || toDate
+        ? {
+            expiryDate: {
+              ...(fromDate
+                ? {
+                    gte: new Date(`${fromDate}T00:00:00.000Z`),
+                  }
+                : {}),
+
+              ...(toDate
+                ? {
+                    lte: new Date(`${toDate}T00:00:00.000Z`),
+                  }
+                : {}),
+            },
+          }
+        : {}),
+
+      /**
+       * Batch
+       *   -> SupplierInvoiceItem
+       *   -> SupplierInvoice
+       *   -> Supplier
+       */
+      ...(supplierId
+        ? {
+            supplierInvoiceItem: {
+              is: {
+                supplierInvoice: {
+                  supplierId,
+
+                  // ضمان أن المورد تابع للصيدلية الحالية.
+                  supplier: {
+                    pharmacyId,
+                  },
+                },
+              },
+            },
+          }
+        : {}),
+    };
+
+    const [batches, total] = await this.prisma.$transaction([
+      this.prisma.batch.findMany({
+        where,
+        skip,
+        take,
+
+        include: {
+          pharmacyDrug: true,
+
+          supplierInvoiceItem: {
+            include: {
+              supplierInvoice: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+
+      this.prisma.batch.count({
+        where,
+      }),
+    ]);
+
+    return toPaginatedResult(batches, total, page, limit);
   }
 
   async addOpeningStockBatches(
@@ -401,6 +457,7 @@ export class BatchService {
       );
     }
   }
+  
   private calculateInvoiceStockingStatus(
     invoice: SupplierInvoiceForStocking,
   ): SupplierInvoiceStatus {
