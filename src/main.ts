@@ -20,9 +20,9 @@ import { AppModule } from './app.module';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // app.use(helmet());
-  // app.use(compression());
-  // app.use(cookieParser());
+  app.use(helmet());
+  app.use(compression());
+  app.use(cookieParser());
 
   // app.enableCors({
   //   origin: true,
@@ -50,7 +50,8 @@ async function bootstrap() {
   SwaggerModule.setup('api/docs', app, swaggerDocument);
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
+  // await app.listen(port);
+  await app.listen(port, '0.0.0.0');
 }
 
 bootstrap();
