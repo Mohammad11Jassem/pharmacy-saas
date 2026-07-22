@@ -61,20 +61,24 @@ export class SubscriptionController {
     @ActiveUser('sub')
     pharmacyId: number,
   ) {
-    return this.subscriptionService.listPrivateOffers(pharmacyId);
+    // return this.subscriptionService.listPrivateOffers(pharmacyId);
+    return 'This endpoint is temporarily disabled. Please call the backend team to enable it.';
   }
 
   // ─── ADMIN: PHARMACY PRIVATE OFFERS ──────────
 
   @Auth(AuthType.Bearer)
   @Roles(AccountType.ADMIN)
-  @Get('admin/pharmacies/:pharmacyId/private-offers')
+  @Get('admin/pharmacies/:pharmacyId/plans/:planId/private-offers')
   @ResponseMessage('Pharmacy private offers retrieved successfully.')
   listPharmacyPrivateOffers(
     @Param('pharmacyId', ParseIntPipe)
     pharmacyId: number,
+
+    @Param('planId', ParseIntPipe)
+    planId: number,
   ) {
-    return this.subscriptionService.listPrivateOffers(pharmacyId);
+    return this.subscriptionService.listPrivateOffers(pharmacyId, planId);
   }
 
   // ─── ADMIN ASSIGN PRIVATE OFFER ───────────────

@@ -1,6 +1,16 @@
-import { Injectable } from '@nestjs/common';
-import { OfferScope } from '../../../generated/prisma/enums';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+
+import {
+  OfferScope,
+  SubscriptionPlanStatus,
+} from '../../../generated/prisma/enums';
+
 import { PrismaService } from '../../../prisma/prisma.service';
+
 import {
   calculateFinalPrice,
   decimalToNumber,
@@ -12,86 +22,142 @@ export class ListPrivateOffersUseCase {
     private readonly prisma: PrismaService,
   ) {}
 
-  async execute(pharmacyId: number) {
+  async execute(
+    pharmacyId: number,
+    planId: number,
+  ) {
     const now = new Date();
 
-    const grants =
-      await this.prisma.pharmacyOfferGrant.findMany({
+    /*
+     * نتحقق أولاً من وجود الصيدلية.
+     *
+     * بدون هذا التحقق، إذا كان pharmacyId غير موجود
+     * فقد نرجع الخطة مع privateOffers فارغة،
+     * وهذا Response مضلل.
+     */
+    const pharmacy =
+      await this.prisma.pharmacy.findUnique({
         where: {
           pharmacyId,
-
-          redeemedAt: null,
-
-          validFrom: {
-            lte: now,
-          },
-
-          validUntil: {
-            gte: now,
-          },
-
-          offer: {
-            scope:
-              OfferScope.PRIVATE,
-
-            isActive: true,
-
-            startsAt: {
-              lte: now,
-            },
-
-            endsAt: {
-              gte: now,
-            },
-          },
-        },
-
-        orderBy: {
-          validUntil: 'asc',
         },
 
         select: {
-          pharmacyOfferGrantId: true,
+          pharmacyId: true,
+        },
+      });
 
-          grantReason: true,
+    if (!pharmacy) {
+      throw new NotFoundException(
+        'Pharmacy not found.',
+      );
+    }
 
-          validFrom: true,
+    /*
+     * نجلب خطة واحدة فقط حسب planId.
+     *
+     * داخل الخطة نجلب فقط العروض الخاصة التي:
+     *
+     * 1. فعالة.
+     * 2. ضمن فترة العرض الحالية.
+     * 3. تم إسنادها للصيدلية المطلوبة.
+     * 4. لم تُستخدم بعد.
+     * 5. ما زالت صلاحية الإسناد فعالة.
+     */
+    const plan =
+      await this.prisma.subscriptionPlan.findUnique({
+        where: {
+          planId,
+        },
 
-          validUntil: true,
+        select: {
+          planId: true,
+          code: true,
+          name: true,
+          description: true,
+          durationMonths: true,
+          planPrice: true,
+          currency: true,
+          type: true,
+          status: true,
 
-          note: true,
+          offers: {
+            where: {
+              scope:
+                OfferScope.PRIVATE,
 
-          offer: {
+              isActive: true,
+
+              startsAt: {
+                lte: now,
+              },
+
+              endsAt: {
+                gte: now,
+              },
+
+              grants: {
+                some: {
+                  pharmacyId,
+
+                  redeemedAt: null,
+
+                  validFrom: {
+                    lte: now,
+                  },
+
+                  validUntil: {
+                    gte: now,
+                  },
+                },
+              },
+            },
+
+            /*
+             * ترتيب العروض حسب أقرب تاريخ انتهاء.
+             *
+             * هذا الترتيب للعرض فقط،
+             * أما أفضل عرض فيتم حسابه لاحقاً حسب finalPrice.
+             */
+            orderBy: {
+              endsAt: 'asc',
+            },
+
             select: {
               offerId: true,
-
               code: true,
-
               title: true,
-
               description: true,
-
               discountType: true,
-
               discountValue: true,
-
               startsAt: true,
-
               endsAt: true,
 
-              plan: {
+              /*
+               * نجلب Grant الصيدلية المطلوبة فقط.
+               */
+              grants: {
+                where: {
+                  pharmacyId,
+
+                  redeemedAt: null,
+
+                  validFrom: {
+                    lte: now,
+                  },
+
+                  validUntil: {
+                    gte: now,
+                  },
+                },
+
+                take: 1,
+
                 select: {
-                  planId: true,
-
-                  code: true,
-
-                  name: true,
-
-                  durationMonths: true,
-
-                  planPrice: true,
-
-                  currency: true,
+                  pharmacyOfferGrantId: true,
+                  grantReason: true,
+                  validFrom: true,
+                  validUntil: true,
+                  note: true,
                 },
               },
             },
@@ -99,99 +165,154 @@ export class ListPrivateOffersUseCase {
         },
       });
 
-    return grants.map(
-      (grant) => {
+    if (!plan) {
+      throw new NotFoundException(
+        'Subscription plan not found.',
+      );
+    }
+
+    /*
+     * لا نعرض عروض خطة غير فعالة.
+     */
+    if (
+      plan.status !==
+      SubscriptionPlanStatus.ACTIVE
+    ) {
+      throw new BadRequestException(
+        'Subscription plan is inactive.',
+      );
+    }
+
+    const privateOffers =
+      plan.offers.map((offer) => {
+        /*
+         * وجود grants.some في الاستعلام الخارجي
+         * يضمن وجود Grant فعال للصيدلية.
+         */
+        const grant =
+          offer.grants[0];
+
         const finalPrice =
           calculateFinalPrice(
-            grant.offer.plan
-              .planPrice,
-
-            grant.offer
-              .discountType,
-
-            grant.offer
-              .discountValue,
+            plan.planPrice,
+            offer.discountType,
+            offer.discountValue,
           );
 
         return {
-          pharmacyOfferGrantId:
-            grant.pharmacyOfferGrantId,
+          offerId:
+            offer.offerId,
 
-          grantReason:
-            grant.grantReason,
+          code:
+            offer.code,
 
-          validFrom:
-            grant.validFrom,
+          title:
+            offer.title,
 
-          validUntil:
-            grant.validUntil,
+          description:
+            offer.description,
 
-          note:
-            grant.note,
+          discountType:
+            offer.discountType,
 
-          offer: {
-            offerId:
-              grant.offer.offerId,
+          discountValue:
+            decimalToNumber(
+              offer.discountValue,
+            ),
 
-            code:
-              grant.offer.code,
+          finalPrice:
+            decimalToNumber(
+              finalPrice,
+            ),
 
-            title:
-              grant.offer.title,
+          startsAt:
+            offer.startsAt,
 
-            description:
-              grant.offer.description,
+          endsAt:
+            offer.endsAt,
 
-            startsAt:
-              grant.offer.startsAt,
+          grant: {
+            pharmacyOfferGrantId:
+              grant.pharmacyOfferGrantId,
 
-            endsAt:
-              grant.offer.endsAt,
-          },
+            grantReason:
+              grant.grantReason,
 
-          plan: {
-            planId:
-              grant.offer.plan.planId,
+            validFrom:
+              grant.validFrom,
 
-            code:
-              grant.offer.plan.code,
+            validUntil:
+              grant.validUntil,
 
-            name:
-              grant.offer.plan.name,
-
-            durationMonths:
-              grant.offer.plan
-                .durationMonths,
-          },
-
-          pricing: {
-            basePrice:
-              decimalToNumber(
-                grant.offer.plan
-                  .planPrice,
-              ),
-
-            discountType:
-              grant.offer
-                .discountType,
-
-            discountValue:
-              decimalToNumber(
-                grant.offer
-                  .discountValue,
-              ),
-
-            finalPrice:
-              decimalToNumber(
-                finalPrice,
-              ),
-
-            currency:
-              grant.offer.plan
-                .currency,
+            note:
+              grant.note,
           },
         };
-      },
-    );
+      });
+
+    /*
+     * نختار العرض الذي ينتج أقل سعر نهائي.
+     *
+     * لا نقارن discountValue مباشرةً لأن أحد العروض
+     * قد يكون نسبة مئوية والآخر مبلغاً ثابتاً.
+     */
+    const bestOffer =
+      privateOffers.length > 0
+        ? privateOffers.reduce(
+            (best, current) =>
+              current.finalPrice <
+              best.finalPrice
+                ? current
+                : best,
+          )
+        : null;
+
+    const basePrice =
+      decimalToNumber(
+        plan.planPrice,
+      );
+
+    return {
+      planId:
+        plan.planId,
+
+      code:
+        plan.code,
+
+      name:
+        plan.name,
+
+      description:
+        plan.description,
+
+      durationMonths:
+        plan.durationMonths,
+
+      type:
+        plan.type,
+
+      currency:
+        plan.currency,
+
+      basePrice,
+
+      /*
+       * إذا وُجد عرض خاص، نستخدم سعر أفضل عرض.
+       * وإلا نستخدم السعر الأساسي للخطة.
+       */
+      currentPrice:
+        bestOffer
+          ? bestOffer.finalPrice
+          : basePrice,
+
+      hasActiveOffer:
+        privateOffers.length > 0,
+
+      bestOfferId:
+        bestOffer?.offerId ??
+        null,
+
+      privateOffers,
+    };
   }
 }

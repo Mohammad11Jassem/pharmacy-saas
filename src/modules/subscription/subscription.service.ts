@@ -38,8 +38,8 @@ export class SubscriptionService {
     return this.subscribePharmacyUseCase.execute(pharmacyId, dto);
   }
 
-  listPrivateOffers(pharmacyId: number) {
-    return this.listPrivateOffersUseCase.execute(pharmacyId);
+  listPrivateOffers(pharmacyId: number, planId: number) {
+    return this.listPrivateOffersUseCase.execute(pharmacyId, planId);
   }
 
   assignPrivateOffer(offerId: number, dto: AssignPrivateOfferDto) {
