@@ -149,6 +149,7 @@ import { seedGeneralDrugs } from './seeds/master-data/general-drugs.seed';
 import { seedSubscriptionPlans } from './seeds/master-data/subscription-plans.seed';
 import {
   seedDrugCatalog,
+  seedPharmacyDrugBatches,
   seedPharmacyDrugCatalog,
 } from './seeds/master-data/drug-catalog.seed';
 const prisma = createPrismaSeedClient();
@@ -199,13 +200,23 @@ async function main() {
     targetPharmacyId,
   );
 
-  console.log('\nSeeded pharmacy drugs:');
+  const pharmacyBatchesResult = await seedPharmacyDrugBatches(
+    prisma,
+    targetPharmacyId,
+  );
+  console.log('\nSeeded pharmacy batches:');
+
   console.table([
     {
       pharmacyId: targetPharmacyId,
-      generalDrugs: pharmacyDrugsResult.generalAssigned,
-      privateDrugs: pharmacyDrugsResult.privateAssigned,
-      total: pharmacyDrugsResult.totalAssigned,
+
+      pharmacyDrugs: pharmacyBatchesResult.pharmacyDrugsCount,
+
+      expectedBatches: pharmacyBatchesResult.expectedBatchesCount,
+
+      createdBatches: pharmacyBatchesResult.createdBatchesCount,
+
+      skippedBatches: pharmacyBatchesResult.skippedBatchesCount,
     },
   ]);
   console.log('Seed completed successfully.');

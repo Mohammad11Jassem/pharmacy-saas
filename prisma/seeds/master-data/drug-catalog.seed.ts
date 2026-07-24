@@ -1,5 +1,5 @@
 import type { PrismaClient } from '../../../src/generated/prisma/client';
-import { DrugSource } from '../../../src/generated/prisma/client';
+import { BatchStatus, DrugSource } from '../../../src/generated/prisma/client';
 
 type DrugIngredientSeed = {
   ingredientName: string;
@@ -1227,6 +1227,476 @@ export async function seedPharmacyDrugCatalog(
 
   console.log(
     `Assigned ${result.generalAssigned} GENERAL and ${result.privateAssigned} PRIVATE drugs to ${pharmacy.pharmacyName}.`,
+  );
+
+  return result;
+}
+
+
+type SeedBatchData = {
+  pharmacyDrugId: number;
+  supplierInvoiceItemId: null;
+  expiryDate: Date;
+  initialQuantity: number;
+  soldQuantity: number;
+  receivedDate: Date;
+  status: BatchStatus;
+};
+
+/*
+ * Creates a JavaScript Date representing a date-only UTC value.
+ *
+ * Month is passed normally:
+ * 1 = January
+ * 7 = July
+ * 12 = December
+ */
+function createUtcDate(
+  year: number,
+  month: number,
+  day: number,
+): Date {
+  return new Date(
+    Date.UTC(
+      year,
+      month - 1,
+      day,
+    ),
+  );
+}
+
+function addUtcDays(
+  date: Date,
+  days: number,
+): Date {
+  const result =
+    new Date(date);
+
+  result.setUTCDate(
+    result.getUTCDate() +
+      days,
+  );
+
+  return result;
+}
+
+function getDateOnlyKey(
+  date: Date | null,
+): string {
+  return date
+    ? date
+        .toISOString()
+        .slice(0, 10)
+    : 'NULL';
+}
+
+/*
+ * Used to recognize batches created by this Seeder
+ * and prevent duplication when the seed runs again.
+ */
+function createBatchKey(input: {
+  pharmacyDrugId: number;
+  expiryDate: Date | null;
+  receivedDate: Date | null;
+  initialQuantity: number;
+}): string {
+  return [
+    input.pharmacyDrugId,
+    getDateOnlyKey(
+      input.expiryDate,
+    ),
+    getDateOnlyKey(
+      input.receivedDate,
+    ),
+    input.initialQuantity,
+  ].join('|');
+}
+
+/*
+ * Creates exactly two batches for every drug assigned
+ * by seedPharmacyDrugCatalog().
+ *
+ * The function targets:
+ *
+ * - The first 10 seeded GENERAL drugs.
+ * - All 20 seeded PRIVATE drugs.
+ *
+ * Therefore, the expected result is 60 batches.
+ */
+export async function seedPharmacyDrugBatches(
+  prisma: PrismaClient,
+  pharmacyId: number,
+): Promise<{
+  pharmacyDrugsCount: number;
+  expectedBatchesCount: number;
+  createdBatchesCount: number;
+  skippedBatchesCount: number;
+}> {
+  console.log(
+    `Creating batches for pharmacy ${pharmacyId}...`,
+  );
+
+  /*
+   * We identify the seeded drugs by their barcodes,
+   * rather than taking every drug belonging to the pharmacy.
+   *
+   * This prevents creating seed batches for real or manually
+   * added drugs in the same pharmacy.
+   */
+  const seededGeneralBarcodes =
+    new Set(
+      GENERAL_DRUGS
+        .slice(0, 10)
+        .map(
+          (drug) =>
+            drug.barcode,
+        ),
+    );
+
+  const seededPrivateBarcodes =
+    new Set(
+      PRIVATE_DRUGS.map(
+        (drug) =>
+          drug.barcode,
+      ),
+    );
+
+  const pharmacyDrugs =
+    await prisma.pharmacyDrug.findMany({
+      where: {
+        pharmacyId,
+      },
+
+      select: {
+        pharmacyDrugId: true,
+
+        drug: {
+          select: {
+            source: true,
+
+            generalDrug: {
+              select: {
+                barcode: true,
+                tradeName: true,
+                unitsPerBox: true,
+              },
+            },
+
+            privateDrug: {
+              select: {
+                barcode: true,
+                tradeName: true,
+                unitsPerBox: true,
+              },
+            },
+          },
+        },
+      },
+
+      orderBy: {
+        pharmacyDrugId: 'asc',
+      },
+    });
+
+  /*
+   * Keep only the 30 PharmacyDrug records
+   * created by our drug catalog Seeder.
+   */
+  const seededPharmacyDrugs =
+    pharmacyDrugs.filter(
+      (pharmacyDrug) => {
+        const generalBarcode =
+          pharmacyDrug.drug
+            .generalDrug
+            ?.barcode;
+
+        const privateBarcode =
+          pharmacyDrug.drug
+            .privateDrug
+            ?.barcode;
+
+        return (
+          (generalBarcode !==
+            undefined &&
+            seededGeneralBarcodes.has(
+              generalBarcode,
+            )) ||
+          (privateBarcode !==
+            undefined &&
+            seededPrivateBarcodes.has(
+              privateBarcode,
+            ))
+        );
+      },
+    );
+
+  if (
+    seededPharmacyDrugs.length !==
+    30
+  ) {
+    throw new Error(
+      [
+        'Expected 30 seeded PharmacyDrug records',
+        `for pharmacy ${pharmacyId},`,
+        `but found ${seededPharmacyDrugs.length}.`,
+        'Run seedPharmacyDrugCatalog() before seedPharmacyDrugBatches().',
+      ].join(' '),
+    );
+  }
+
+  /*
+   * Fixed received dates make the Seeder deterministic.
+   *
+   * The expiry dates are shifted slightly based on the
+   * drug index so the batches have different expiry dates.
+   *
+   * This is useful for testing FEFO:
+   * First Expired, First Out.
+   */
+  const firstReceivedDate =
+    createUtcDate(
+      2026,
+      7,
+      1,
+    );
+
+  const secondReceivedDate =
+    createUtcDate(
+      2026,
+      7,
+      15,
+    );
+
+  const firstExpiryBaseDate =
+    createUtcDate(
+      2027,
+      1,
+      1,
+    );
+
+  const secondExpiryBaseDate =
+    createUtcDate(
+      2027,
+      7,
+      1,
+    );
+
+  const requestedBatches:
+    SeedBatchData[] = [];
+
+  seededPharmacyDrugs.forEach(
+    (
+      pharmacyDrug,
+      index,
+    ) => {
+      const generalDrug =
+        pharmacyDrug.drug
+          .generalDrug;
+
+      const privateDrug =
+        pharmacyDrug.drug
+          .privateDrug;
+
+      const drug =
+        generalDrug ??
+        privateDrug;
+
+      if (!drug) {
+        throw new Error(
+          `Drug details not found for PharmacyDrug ${pharmacyDrug.pharmacyDrugId}.`,
+        );
+      }
+
+      if (
+        drug.unitsPerBox < 1
+      ) {
+        throw new Error(
+          `Invalid unitsPerBox for drug ${drug.tradeName}.`,
+        );
+      }
+
+      /*
+       * Quantities inside Batch are base quantities.
+       *
+       * Batch 1 = 10 boxes.
+       * Batch 2 = 15 boxes.
+       */
+      const firstBatchQuantity =
+        drug.unitsPerBox * 10;
+
+      const secondBatchQuantity =
+        drug.unitsPerBox * 15;
+
+      requestedBatches.push(
+        {
+          pharmacyDrugId:
+            pharmacyDrug
+              .pharmacyDrugId,
+
+          /*
+           * No supplier invoice is associated
+           * with this seed batch.
+           */
+          supplierInvoiceItemId:
+            null,
+
+          receivedDate:
+            firstReceivedDate,
+
+          expiryDate:
+            addUtcDays(
+              firstExpiryBaseDate,
+              index,
+            ),
+
+          initialQuantity:
+            firstBatchQuantity,
+
+          soldQuantity: 0,
+
+          status:
+            BatchStatus.ACTIVE,
+        },
+
+        {
+          pharmacyDrugId:
+            pharmacyDrug
+              .pharmacyDrugId,
+
+          supplierInvoiceItemId:
+            null,
+
+          receivedDate:
+            secondReceivedDate,
+
+          expiryDate:
+            addUtcDays(
+              secondExpiryBaseDate,
+              index,
+            ),
+
+          initialQuantity:
+            secondBatchQuantity,
+
+          soldQuantity: 0,
+
+          status:
+            BatchStatus.ACTIVE,
+        },
+      );
+    },
+  );
+
+  const pharmacyDrugIds =
+    seededPharmacyDrugs.map(
+      (pharmacyDrug) =>
+        pharmacyDrug
+          .pharmacyDrugId,
+    );
+
+  /*
+   * Batch has no unique compound constraint suitable
+   * for upsert.
+   *
+   * Therefore, we read existing no-supplier batches,
+   * build deterministic keys, and create only missing rows.
+   */
+  const existingBatches =
+    await prisma.batch.findMany({
+      where: {
+        pharmacyDrugId: {
+          in: pharmacyDrugIds,
+        },
+
+        supplierInvoiceItemId:
+          null,
+      },
+
+      select: {
+        pharmacyDrugId: true,
+        expiryDate: true,
+        receivedDate: true,
+        initialQuantity: true,
+      },
+    });
+
+  const existingBatchKeys =
+    new Set(
+      existingBatches.map(
+        (batch) =>
+          createBatchKey({
+            pharmacyDrugId:
+              batch
+                .pharmacyDrugId,
+
+            expiryDate:
+              batch.expiryDate,
+
+            receivedDate:
+              batch.receivedDate,
+
+            initialQuantity:
+              batch.initialQuantity,
+          }),
+      ),
+    );
+
+  const missingBatches =
+    requestedBatches.filter(
+      (batch) => {
+        const key =
+          createBatchKey({
+            pharmacyDrugId:
+              batch
+                .pharmacyDrugId,
+
+            expiryDate:
+              batch.expiryDate,
+
+            receivedDate:
+              batch.receivedDate,
+
+            initialQuantity:
+              batch
+                .initialQuantity,
+          });
+
+        return !existingBatchKeys.has(
+          key,
+        );
+      },
+    );
+
+  if (
+    missingBatches.length >
+    0
+  ) {
+    await prisma.batch.createMany({
+      data: missingBatches,
+    });
+  }
+
+  const result = {
+    pharmacyDrugsCount:
+      seededPharmacyDrugs.length,
+
+    expectedBatchesCount:
+      requestedBatches.length,
+
+    createdBatchesCount:
+      missingBatches.length,
+
+    skippedBatchesCount:
+      requestedBatches.length -
+      missingBatches.length,
+  };
+
+  console.log(
+    [
+      `Pharmacy ${pharmacyId}:`,
+      `${result.createdBatchesCount} batches created,`,
+      `${result.skippedBatchesCount} already existed.`,
+    ].join(' '),
   );
 
   return result;
