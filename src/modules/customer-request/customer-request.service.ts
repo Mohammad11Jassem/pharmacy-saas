@@ -12,6 +12,12 @@ import {
   getPaginationParams,
   toPaginatedResult,
 } from '../../common/pagination/pagination.util';
+import {
+  customerRequestListInclude,
+  customerRequestWithTradeNameInclude,
+  mapCustomerRequestListResponse,
+  mapCustomerRequestResponse,
+} from './mappers/customer-request-response.mapper';
 
 @Injectable()
 export class CustomerRequestService {
@@ -100,6 +106,89 @@ export class CustomerRequestService {
     });
   }
 
+  // async findAll(pharmacyId: number, query: GetCustomerRequestsDto) {
+  //   const { page, limit, skip, take } = getPaginationParams(
+  //     query.page,
+  //     query.limit,
+  //   );
+
+  //   const where: Prisma.CustomerRequestWhereInput = {
+  //     pharmacyId,
+  //   };
+
+  //   if (
+  //     query.fromDate &&
+  //     query.toDate &&
+  //     new Date(query.fromDate) > new Date(query.toDate)
+  //   ) {
+  //     throw new BadRequestException('fromDate must be before toDate');
+  //   }
+
+  //   if (query.status) {
+  //     where.status = query.status;
+  //   }
+
+  //   if (query.search) {
+  //     where.OR = [
+  //       {
+  //         customerName: {
+  //           contains: query.search,
+  //           mode: 'insensitive',
+  //         },
+  //       },
+  //       {
+  //         customerPhone: {
+  //           contains: query.search,
+  //         },
+  //       },
+  //     ];
+  //   }
+
+  //   if (query.fromDate || query.toDate) {
+  //     where.createdAt = {};
+
+  //     if (query.fromDate) {
+  //       where.createdAt.gte = new Date(query.fromDate);
+  //     }
+
+  //     if (query.toDate) {
+  //       where.createdAt.lte = new Date(query.toDate);
+  //     }
+  //   }
+
+  //   if (query.pharmacyDrugId) {
+  //     where.items = {
+  //       some: {
+  //         pharmacyDrugId: query.pharmacyDrugId,
+  //       },
+  //     };
+  //   }
+
+  //   const [items, total] = await Promise.all([
+  //     this.prisma.customerRequest.findMany({
+  //       where,
+  //       include: {
+  //         items: {
+  //           include: {
+  //             pharmacyDrug: true,
+  //           },
+  //         },
+  //       },
+  //       orderBy: {
+  //         createdAt: 'desc',
+  //       },
+  //       skip,
+  //       take,
+  //     }),
+
+  //     this.prisma.customerRequest.count({
+  //       where,
+  //     }),
+  //   ]);
+
+  //   return toPaginatedResult(items, total, page, limit);
+  // }
+
   async findAll(pharmacyId: number, query: GetCustomerRequestsDto) {
     const { page, limit, skip, take } = getPaginationParams(
       query.page,
@@ -158,19 +247,17 @@ export class CustomerRequestService {
       };
     }
 
-    const [items, total] = await Promise.all([
+    const [requests, total] = await Promise.all([
       this.prisma.customerRequest.findMany({
         where,
-        include: {
-          items: {
-            include: {
-              pharmacyDrug: true,
-            },
-          },
-        },
+
+        // لا نجلب items، وإنما عددها فقط.
+        include: customerRequestListInclude,
+
         orderBy: {
           createdAt: 'desc',
         },
+
         skip,
         take,
       }),
@@ -180,8 +267,36 @@ export class CustomerRequestService {
       }),
     ]);
 
-    return toPaginatedResult(items, total, page, limit);
+    return toPaginatedResult(
+      requests.map(mapCustomerRequestListResponse),
+      total,
+      page,
+      limit,
+    );
   }
+
+  // async findOne(pharmacyId: number, customerRequestId: number) {
+  //   const request = await this.prisma.customerRequest.findFirst({
+  //     where: {
+  //       customerRequestId,
+  //       pharmacyId,
+  //     },
+
+  //     include: {
+  //       items: {
+  //         include: {
+  //           pharmacyDrug: true,
+  //         },
+  //       },
+  //     },
+  //   });
+
+  //   if (!request) {
+  //     throw new NotFoundException('Customer request not found');
+  //   }
+
+  //   return request;
+  // }
 
   async findOne(pharmacyId: number, customerRequestId: number) {
     const request = await this.prisma.customerRequest.findFirst({
@@ -190,20 +305,14 @@ export class CustomerRequestService {
         pharmacyId,
       },
 
-      include: {
-        items: {
-          include: {
-            pharmacyDrug: true,
-          },
-        },
-      },
+      include: customerRequestWithTradeNameInclude,
     });
 
     if (!request) {
       throw new NotFoundException('Customer request not found');
     }
 
-    return request;
+    return mapCustomerRequestResponse(request);
   }
 
   update(id: number, updateCustomerRequestDto: UpdateCustomerRequestDto) {
