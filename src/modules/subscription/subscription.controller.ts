@@ -136,4 +136,12 @@ export class SubscriptionController {
   ) {
     return this.subscriptionService.findPharmacySubscriptions(pharmacyId, dto);
   }
+
+  @Auth(AuthType.Bearer)
+  @Roles(AccountType.ADMIN)
+  @Get('admin/private-offers')
+  @ResponseMessage('Unexpired private offers retrieved successfully.')
+  listUnexpiredPrivateOffers() {
+    return this.subscriptionService.listUnexpiredPrivateOffers();
+  }
 }

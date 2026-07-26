@@ -35,6 +35,7 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    AppModule,
     PrismaModule,
     UsersModule,
     PharmacyOwnersModule,
