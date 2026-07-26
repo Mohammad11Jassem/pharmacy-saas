@@ -1,0 +1,21 @@
+export const RAG_REQUEST_AGGREGATE_TYPE =
+  'RAG_REQUEST';
+
+export const CHAT_ANSWER_REQUESTED_EVENT =
+  'CHAT_ANSWER_REQUESTED';
+
+export const CHAT_OUTBOX_DISPATCH_INTERVAL_MS =
+  1_000;
+
+export const CHAT_OUTBOX_BATCH_SIZE = 20;
+
+export const CHAT_OUTBOX_LOCK_TIMEOUT_MS =
+  2 * 60 * 1_000;
+
+export const CHAT_OUTBOX_MAX_ATTEMPTS = 10;
+
+export const CHAT_OUTBOX_BASE_RETRY_DELAY_MS =
+  2_000;
+
+export const CHAT_OUTBOX_MAX_RETRY_DELAY_MS =
+  5 * 60 * 1_000;

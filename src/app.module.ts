@@ -1,5 +1,5 @@
 import { Module } from '@nestjs/common';
-import { ConfigModule } from '@nestjs/config';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
@@ -29,6 +29,9 @@ import { ReturnInvoiceModule } from './modules/return-invoice/return-invoice.mod
 import { ReturnInvoiceItemModule } from './modules/return-invoice-item/return-invoice-item.module';
 import { DamageInvoiceModule } from './modules/damage-invoices/damage-invoice.module';
 import { SubscriptionModule } from './modules/subscription/subscription.module';
+import { ChattingModule } from './modules/Chatting/chatting.module';
+import { BullModule } from '@nestjs/bullmq';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -61,6 +64,40 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
     ReturnInvoiceItemModule,
     DamageInvoiceModule,
     SubscriptionModule,
+    ScheduleModule.forRoot(),
+    BullModule.forRootAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+
+      useFactory: (configService: ConfigService) => {
+        const host = configService.get<string>('REDIS_HOST') ?? '127.0.0.1';
+
+        const port = Number(configService.get<string>('REDIS_PORT') ?? '6379');
+
+        const password =
+          configService.get<string>('REDIS_PASSWORD') || undefined;
+
+        const db = Number(configService.get<string>('REDIS_DB') ?? '0');
+
+        if (!Number.isInteger(port) || port <= 0) {
+          throw new Error('REDIS_PORT must be a valid positive integer.');
+        }
+
+        if (!Number.isInteger(db) || db < 0) {
+          throw new Error('REDIS_DB must be a valid non-negative integer.');
+        }
+
+        return {
+          connection: {
+            host,
+            port,
+            password,
+            db,
+          },
+        };
+      },
+    }),
+    ChattingModule,
   ],
   providers: [
     {

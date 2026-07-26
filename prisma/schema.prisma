@@ -206,6 +206,33 @@ enum PharmacySubscriptionStatus {
   CANCELLED
 }
 
+enum RagMessageRole {
+  USER
+  ASSISTANT
+}
+
+// enum RagMessageStatus {
+//   PENDING
+//   COMPLETED
+//   FAILED
+// }
+
+enum RagRequestStatus {
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  EXPIRED
+}
+
+enum OutboxEventStatus {
+  PENDING
+  PROCESSING
+  PUBLISHED
+  FAILED
+
+  @@map("outbox_event_status")
+}
+
 // ─── USER ACCOUNT ─────────────────────────────────────────────────────────────
 
 model UserAccount {
@@ -276,8 +303,14 @@ model Pharmacy {
 
   subscriptions PharmacySubscription[]
   offerGrants   PharmacyOfferGrant[]
-  createdAt     DateTime               @default(now()) @map("created_at")
-  updatedAt     DateTime               @updatedAt @map("updated_at")
+
+  // chat History
+  ragConversations RagConversation[]
+  // ragRequests      RagRequest[]
+  // ragDailyUsages   RagUsageDaily[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("pharmacies")
 }
@@ -1043,6 +1076,11 @@ model SubscriptionPlan {
   type   SubscriptionPlanType
   status SubscriptionPlanStatus @default(ACTIVE)
 
+  //chat History
+  ragEnabled                          Boolean @default(false) @map("rag_enabled")
+  ragMaxCompletedTurnsPerConversation Int?    @map("rag_max_completed_turns_per_conversation")
+  ragMonthlyRequestLimit              Int?    @map("rag_monthly_request_limit")
+
   offers        PlanOffer[]
   subscriptions PharmacySubscription[]
 
@@ -1144,6 +1182,10 @@ model PharmacySubscription {
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  // chat History
+  ragRequests    RagRequest[]
+  ragDailyUsages RagUsageDaily[]
+
   @@index([pharmacyId, startsAt, endsAt])
   @@index([pharmacyId, status])
   @@index([planId])
@@ -1177,4 +1219,273 @@ model SubscriptionAppliedOffer {
 
   @@index([offerId])
   @@map("subscription_applied_offers")
+}
+
+// ─── CHAT HISTORY ───────────────────────────────────────────────
+
+// ─── RAG CONVERSATION ─────────────────────────────────────────────────────────
+model RagConversation {
+  ragConversationId Int @id @default(autoincrement()) @map("rag_conversation_id")
+
+  pharmacyId Int      @map("pharmacy_id")
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [pharmacyId], onDelete: Cascade)
+
+  title String @default("New conversation") @db.VarChar(150)
+
+  // completedTurnsCount Int @default(0) @map("completed_turns_count")
+
+  lastMessageAt DateTime? @map("last_message_at")
+  archivedAt    DateTime? @map("archived_at")
+
+  // processingRequestId String? @map("processing_request_id") @db.VarChar(100)
+
+  // processingExpiresAt DateTime? @map("processing_expires_at")
+
+  // messages RagMessage[]
+  requests RagRequest[]
+  memory   RagConversationMemory?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([pharmacyId, archivedAt, lastMessageAt])
+  @@map("rag_conversations")
+}
+
+// ─── RAG MESSAGE ─────────────────────────────────────────────────────────────
+model RagMessage {
+  ragMessageId Int @id @default(autoincrement()) @map("rag_message_id")
+
+  // ragConversationId Int             @map("rag_conversation_id")
+  // conversation      RagConversation @relation(fields: [ragConversationId], references: [ragConversationId], onDelete: Cascade)
+
+  ragRequestId Int        @map("rag_request_id")
+  request      RagRequest @relation(fields: [ragRequestId], references: [ragRequestId], onDelete: Cascade)
+
+  // turnNumber Int @map("turn_number")
+
+  role RagMessageRole
+  // status RagMessageStatus @default(PENDING)
+
+  content String @db.Text
+
+  citations RagMessageCitation[]
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // @@unique([ragConversationId, turnNumber, role])
+  // @@index([ragConversationId, createdAt])
+  @@unique([ragRequestId, role])
+  // @@index([ragRequestId, createdAt])
+  @@map("rag_messages")
+}
+
+//──────────────────────RAG REQUEST────────────────────────────────────────────
+model RagRequest {
+  ragRequestId Int @id @default(autoincrement()) @map("rag_request_id")
+
+  // pharmacyId Int      @map("pharmacy_id")
+  // pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [pharmacyId], onDelete: Cascade)
+
+  pharmacySubscriptionId Int                  @map("pharmacy_subscription_id")
+  pharmacySubscription   PharmacySubscription @relation(fields: [pharmacySubscriptionId], references: [pharmacySubscriptionId], onDelete: Restrict)
+
+  ragConversationId Int             @map("rag_conversation_id")
+  conversation      RagConversation @relation(fields: [ragConversationId], references: [ragConversationId], onDelete: Cascade)
+
+  turnNumber Int @map("turn_number")
+
+  // clientRequestId String @map("client_request_id") @db.VarChar(100)
+  clientRequestId String @unique(map: "uq_rag_requests_client_request_id") @map("client_request_id") @db.Uuid
+
+  status RagRequestStatus @default(PROCESSING)
+
+  // usagePeriodStart DateTime @map("usage_period_start")
+  // usagePeriodEnd   DateTime @map("usage_period_end")
+
+  leaseExpiresAt DateTime  @map("lease_expires_at")
+  finishedAt     DateTime? @map("finished_at")
+
+  failureCode String? @map("failure_code") @db.VarChar(100)
+
+  summaryUpdated Boolean @default(false) @map("summary_updated")
+
+  latencyMs Int? @map("latency_ms")
+
+  messages RagMessage[]
+
+  startedAt DateTime @default(now()) @map("started_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+  // pharmacy           Pharmacy? @relation(fields: [pharmacyPharmacyId], references: [pharmacyId])
+  // pharmacyPharmacyId Int?
+
+  @@unique([ragConversationId, clientRequestId])
+  @@unique([ragConversationId, turnNumber])
+  // @@index([pharmacySubscriptionId, status, usagePeriodStart, usagePeriodEnd])
+  // @@index([status, leaseExpiresAt])
+  @@index([pharmacySubscriptionId, status, startedAt])
+  @@index([ragConversationId, status, leaseExpiresAt])
+  @@map("rag_requests")
+}
+
+// ─── RAG USAGE DAILY ─────────────────────────────────────────────────────────
+model RagUsageDaily {
+  ragUsageDailyId Int @id @default(autoincrement()) @map("rag_usage_daily_id")
+
+  // pharmacyId Int      @map("pharmacy_id")
+  // pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [pharmacyId], onDelete: Cascade)
+
+  pharmacySubscriptionId Int                  @map("pharmacy_subscription_id")
+  pharmacySubscription   PharmacySubscription @relation(fields: [pharmacySubscriptionId], references: [pharmacySubscriptionId], onDelete: Restrict)
+
+  usageDate DateTime @map("usage_date") @db.Date
+
+  usagePeriodStart DateTime @map("usage_period_start")
+  usagePeriodEnd   DateTime @map("usage_period_end")
+
+  successfulRequests Int @default(0) @map("successful_requests")
+
+  failedRequests Int @default(0) @map("failed_requests")
+
+  expiredRequests Int @default(0) @map("expired_requests")
+
+  summaryUpdates Int @default(0) @map("summary_updates")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // @@unique([pharmacySubscriptionId, usageDate])
+  // @@unique([pharmacySubscriptionId,usageDate,usagePeriodStart])
+  @@unique([pharmacySubscriptionId, usageDate, usagePeriodStart], map: "rag_usage_daily_subscription_date_period_key")
+  @@index([pharmacySubscriptionId, usagePeriodStart, usagePeriodEnd])
+  @@map("rag_usage_daily")
+}
+
+// ─── RAG CONVERSATION MEMORY ─────────────────────────────────────────────────
+model RagConversationMemory {
+  ragConversationMemoryId Int @id @default(autoincrement()) @map("rag_conversation_memory_id")
+
+  ragConversationId Int             @unique @map("rag_conversation_id")
+  conversation      RagConversation @relation(fields: [ragConversationId], references: [ragConversationId], onDelete: Cascade)
+
+  summaryText String @map("summary_text") @db.Text
+
+  structuredState Json? @map("structured_state")
+
+  summarizedUntilTurn Int @default(0) @map("summarized_until_turn")
+
+  memorySchemaVersion Int @default(1) @map("memory_schema_version")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("rag_conversation_memories")
+}
+
+// ─── RAG MESSAGE CITATION ─────────────────────────────────────────────────
+model RagMessageCitation {
+  ragMessageCitationId Int @id @default(autoincrement()) @map("rag_message_citation_id")
+
+  ragMessageId Int        @map("rag_message_id")
+  message      RagMessage @relation(fields: [ragMessageId], references: [ragMessageId], onDelete: Cascade)
+
+  position Int
+
+  sourceType String @map("source_type") @db.VarChar(50)
+
+  documentId String? @map("document_id") @db.VarChar(255)
+
+  chunkId String? @map("chunk_id") @db.VarChar(255)
+
+  title String? @db.VarChar(255)
+
+  page Int?
+
+  snippet String? @db.Text
+
+  score Float?
+
+  createdAt DateTime @default(now()) @map("created_at")
+  // updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@unique([ragMessageId, position])
+  // @@index([ragMessageId])
+  @@map("rag_message_citations")
+}
+
+// ─── OutboxEvent ─────────────────────────────────────────────────────────────
+
+model OutboxEvent {
+  outboxEventId Int @id @default(autoincrement()) @map("outbox_event_id")
+
+  /**
+   * نوع الكيان الذي تسبب بالحدث.
+   * مثال:
+   * RAG_REQUEST
+   */
+  aggregateType String @map("aggregate_type") @db.VarChar(50)
+
+  /**
+   * معرّف الكيان.
+   * نخزنه String حتى يبقى الـOutbox عاماً وقابلاً لإعادة الاستخدام.
+   */
+  aggregateId String @map("aggregate_id") @db.VarChar(100)
+
+  /**
+   * نوع الحدث.
+   * مثال:
+   * CHAT_ANSWER_REQUESTED
+   */
+  eventType String @map("event_type") @db.VarChar(100)
+
+  /**
+   * البيانات التي يحتاجها مستهلك الحدث.
+   * حالياً ستكون:
+   * {
+   * "ragRequestId": 41
+   * }
+   */
+  payload Json
+
+  status OutboxEventStatus @default(PENDING)
+
+  /**
+   * عدد محاولات نشر الحدث إلى BullMQ.
+   */
+  attempts Int @default(0)
+
+  /**
+   * الموعد الذي تصبح فيه Event جاهزة للمحاولة.
+   * يفيد لاحقاً في تطبيق Backoff.
+   */
+  availableAt DateTime @default(now()) @map("available_at")
+
+  /**
+   * وقت حجز Event بواسطة Dispatcher.
+   */
+  lockedAt DateTime? @map("locked_at")
+
+  /**
+   * وقت نجاح نشرها إلى BullMQ.
+   */
+  publishedAt DateTime? @map("published_at")
+
+  /**
+   * آخر خطأ حصل أثناء النشر.
+   */
+  lastError String? @map("last_error") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  /**
+   * يمنع إنشاء الحدث نفسه مرتين لنفس RagRequest.
+   */
+  @@unique([eventType, aggregateId], map: "uq_outbox_events_type_aggregate")
+  /**
+   * يستخدمه Dispatcher لجلب الأحداث الجاهزة.
+   */
+  @@index([status, availableAt, createdAt], map: "idx_outbox_events_dispatch")
+  @@index([status, lockedAt], map: "idx_outbox_events_locked")
+  @@map("outbox_events")
 }
