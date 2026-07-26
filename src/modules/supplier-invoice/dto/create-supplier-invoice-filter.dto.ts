@@ -7,12 +7,15 @@ import {
   IsString,
   Min,
 } from 'class-validator';
+
 import {
   PaymentStatus,
   SupplierInvoiceStatus,
 } from '../../../generated/prisma/enums';
 
-export class SupplierInvoiceFilterDto {
+import { PaginationQueryDto } from '../../../common/pagination/pagination-query.dto';
+
+export class SupplierInvoiceFilterDto extends PaginationQueryDto {
   @IsOptional()
   @Type(() => Number)
   @IsInt()

@@ -9,6 +9,7 @@ import { ListPublicSubscriptionPlansUseCase } from './use-cases/list-public-subs
 import { SubscribePharmacyUseCase } from './use-cases/subscribe-pharmacy.usecase';
 import { CreatePlanOfferUseCase } from './use-cases/create-plan-offer.usecase';
 import { FindPharmacySubscriptionsUseCase } from './use-cases/find-pharmacy-subscriptions.usecase';
+import { ListUnexpiredPrivateOffersUseCase } from './use-cases/list-unexpired-private-offers.use-case';
 
 @Module({
   controllers: [
@@ -30,7 +31,8 @@ import { FindPharmacySubscriptionsUseCase } from './use-cases/find-pharmacy-subs
 
     ListPharmaciesWithOffersUseCase,
     CreatePlanOfferUseCase,
-    FindPharmacySubscriptionsUseCase
+    FindPharmacySubscriptionsUseCase,
+    ListUnexpiredPrivateOffersUseCase,
   ],
 })
 export class SubscriptionModule {}

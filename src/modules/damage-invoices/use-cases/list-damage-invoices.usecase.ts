@@ -10,6 +10,7 @@ import {
   listDamageInvoiceSelect,
   mapDamageInvoiceListItem,
 } from '../mapper/list-damage-invoice.mapper';
+import { toPaginatedResult } from '../../../common/pagination/pagination.util';
 
 @Injectable()
 export class ListDamageInvoicesUseCase {
@@ -140,20 +141,21 @@ if (pharmacyDrugId) {
 
     const pages = Math.ceil(total / safeLimit);
 
-    return {
-      damageInvoices: mappedDamageInvoices,
+    // return {
+    //   damageInvoices: mappedDamageInvoices,
 
-      page: safePage,
+    //   page: safePage,
 
-      limit: safeLimit,
+    //   limit: safeLimit,
 
-      total,
+    //   total,
 
-      pages,
+    //   pages,
 
-      hasNextPage: safePage < pages,
+    //   hasNextPage: safePage < pages,
 
-      hasPreviousPage: safePage > 1,
-    };
+    //   hasPreviousPage: safePage > 1,
+    // };
+    return toPaginatedResult(mappedDamageInvoices, total, page, limit);
   }
 }

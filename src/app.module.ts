@@ -38,6 +38,7 @@ import { ScheduleModule } from '@nestjs/schedule';
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+    AppModule,
     PrismaModule,
     UsersModule,
     PharmacyOwnersModule,

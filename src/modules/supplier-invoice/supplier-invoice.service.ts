@@ -8,6 +8,7 @@ import { UpdateSupplierInvoiceDto } from './dto/update-supplier-invoice.dto';
 import { Prisma, SupplierInvoiceStatus } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { SupplierInvoiceFilterDto } from './dto/create-supplier-invoice-filter.dto';
+import { getPaginationParams, toPaginatedResult } from '../../common/pagination/pagination.util';
 
 @Injectable()
 export class SupplierInvoiceService {
@@ -144,6 +145,9 @@ export class SupplierInvoiceService {
 
   async findAll(pharmacyId: number, filters: SupplierInvoiceFilterDto) {
     const {
+      page: requestedPage,
+      limit: requestedLimit,
+
       supplierId,
       status,
       paymentStatus,
@@ -153,47 +157,147 @@ export class SupplierInvoiceService {
       pharmacyDrugId,
     } = filters;
 
-    return this.prisma.supplierInvoice.findMany({
-      where: {
-        supplier: {
-          pharmacyId,
-          ...(supplierId !== undefined ? { supplierId } : {}),
-        },
-        ...(status !== undefined ? { status } : {}),
-        ...(paymentStatus !== undefined ? { paymentStatus } : {}),
-        ...(invoiceNumber
-          ? { invoiceNumber: { contains: invoiceNumber, mode: 'insensitive' } }
-          : {}),
-        ...(fromDate || toDate
+    const { page, limit, skip, take } = getPaginationParams(
+      requestedPage,
+      requestedLimit,
+    );
+    // return this.prisma.supplierInvoice.findMany({
+    //   where: {
+    //     supplier: {
+    //       pharmacyId,
+    //       ...(supplierId !== undefined ? { supplierId } : {}),
+    //     },
+    //     ...(status !== undefined ? { status } : {}),
+    //     ...(paymentStatus !== undefined ? { paymentStatus } : {}),
+    //     ...(invoiceNumber
+    //       ? { invoiceNumber: { contains: invoiceNumber, mode: 'insensitive' } }
+    //       : {}),
+    //     ...(fromDate || toDate
+    //       ? {
+    //           invoiceDate: {
+    //             ...(fromDate ? { gte: new Date(fromDate) } : {}),
+    //             ...(toDate ? { lte: new Date(toDate) } : {}),
+    //           },
+    //         }
+    //       : {}),
+    //     ...(pharmacyDrugId
+    //       ? {
+    //           items: {
+    //             some: {
+    //               pharmacyDrugId,
+    //             },
+    //           },
+    //         }
+    //       : {}),
+    //   },
+    //   include: {
+    //     supplier: true,
+    //     items: {
+    //       include: {
+    //         pharmacyDrug: true,
+    //       },
+    //     },
+    //   },
+    //   orderBy: {
+    //     createdAt: 'desc',
+    //   },
+    // });
+
+    /*
+     * نبني شرط where مرة واحدة،
+     * ثم نستخدمه في findMany وcount.
+     */
+    const where: Prisma.SupplierInvoiceWhereInput = {
+      supplier: {
+        pharmacyId,
+
+        ...(supplierId !== undefined
           ? {
-              invoiceDate: {
-                ...(fromDate ? { gte: new Date(fromDate) } : {}),
-                ...(toDate ? { lte: new Date(toDate) } : {}),
-              },
-            }
-          : {}),
-        ...(pharmacyDrugId
-          ? {
-              items: {
-                some: {
-                  pharmacyDrugId,
-                },
-              },
+              supplierId,
             }
           : {}),
       },
-      include: {
-        supplier: true,
-        items: {
-          include: {
-            pharmacyDrug: true,
+
+      ...(status !== undefined
+        ? {
+            status,
+          }
+        : {}),
+
+      ...(paymentStatus !== undefined
+        ? {
+            paymentStatus,
+          }
+        : {}),
+
+      ...(invoiceNumber?.trim()
+        ? {
+            invoiceNumber: {
+              contains: invoiceNumber.trim(),
+
+              mode: 'insensitive',
+            },
+          }
+        : {}),
+
+      ...(fromDate || toDate
+        ? {
+            invoiceDate: {
+              ...(fromDate
+                ? {
+                    gte: new Date(fromDate),
+                  }
+                : {}),
+
+              ...(toDate
+                ? {
+                    lte: new Date(toDate),
+                  }
+                : {}),
+            },
+          }
+        : {}),
+
+      ...(pharmacyDrugId !== undefined
+        ? {
+            items: {
+              some: {
+                pharmacyDrugId,
+              },
+            },
+          }
+        : {}),
+    };
+
+    const [supplierInvoices, total] = await this.prisma.$transaction([
+      this.prisma.supplierInvoice.findMany({
+        where,
+
+        skip,
+
+        take,
+
+        include: {
+          supplier: true,
+
+          items: {
+            include: {
+              pharmacyDrug: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+
+      this.prisma.supplierInvoice.count({
+        where,
+      }),
+    ]);
+
+    return toPaginatedResult(supplierInvoices, total, page, limit);
   }
 
   async findOne(pharmacyId: number, id: number) {
@@ -247,25 +351,25 @@ export class SupplierInvoiceService {
           },
 
           include: {
-              pharmacyDrug: {
-                select: {
-                  drug: {
-                    select: {
-                      generalDrug: {
-                        select: {
-                          tradeName: true,
-                        },
+            pharmacyDrug: {
+              select: {
+                drug: {
+                  select: {
+                    generalDrug: {
+                      select: {
+                        tradeName: true,
                       },
+                    },
 
-                      privateDrug: {
-                        select: {
-                          tradeName: true,
-                        },
+                    privateDrug: {
+                      select: {
+                        tradeName: true,
                       },
                     },
                   },
                 },
               },
+            },
 
             batches: {
               // Remove timestamps from every batch.

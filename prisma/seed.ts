@@ -147,6 +147,11 @@ import { seedDrugCategories } from './seeds/master-data/drug-categories.seed';
 import { seedActiveIngredients } from './seeds/master-data/active-ingredients.seed';
 import { seedGeneralDrugs } from './seeds/master-data/general-drugs.seed';
 import { seedSubscriptionPlans } from './seeds/master-data/subscription-plans.seed';
+import {
+  seedDrugCatalog,
+  seedPharmacyDrugBatches,
+  seedPharmacyDrugCatalog,
+} from './seeds/master-data/drug-catalog.seed';
 const prisma = createPrismaSeedClient();
 
 async function main() {
@@ -158,10 +163,11 @@ async function main() {
   await seedDosageForms(prisma);
   await seedDrugCategories(prisma);
   await seedActiveIngredients(prisma);
-  await seedGeneralDrugs(prisma);
+  // await seedGeneralDrugs(prisma);
+  await seedDrugCatalog(prisma);
 
   await seedSubscriptionPlans(prisma);
-  
+
   const userPasswordHash = await hashSeedPassword(SEED_USER_PASSWORD);
   const pharmacyPasswordHash = await hashSeedPassword(SEED_PHARMACY_PASSWORD);
 
@@ -171,7 +177,48 @@ async function main() {
     pharmacyOwnerId: users.pharmacyOwner.pharmacyOwnerId,
     pharmacyPasswordHash,
   });
+  const targetPharmacyIdRaw = process.env.SEED_TARGET_PHARMACY_ID;
 
+  /*
+   * If SEED_TARGET_PHARMACY_ID is provided,
+   * drugs will be assigned to that pharmacy.
+   *
+   * Otherwise, the demo pharmacy created by the seed
+   * will be used automatically.
+   */
+  const targetPharmacyId =
+    targetPharmacyIdRaw !== undefined
+      ? Number(targetPharmacyIdRaw)
+      : demoPharmacy.pharmacy.pharmacyId;
+
+  if (!Number.isInteger(targetPharmacyId) || targetPharmacyId < 1) {
+    throw new Error('SEED_TARGET_PHARMACY_ID must be a positive integer.');
+  }
+
+  const pharmacyDrugsResult = await seedPharmacyDrugCatalog(
+    prisma,
+    targetPharmacyId,
+  );
+
+  const pharmacyBatchesResult = await seedPharmacyDrugBatches(
+    prisma,
+    targetPharmacyId,
+  );
+  console.log('\nSeeded pharmacy batches:');
+
+  console.table([
+    {
+      pharmacyId: targetPharmacyId,
+
+      pharmacyDrugs: pharmacyBatchesResult.pharmacyDrugsCount,
+
+      expectedBatches: pharmacyBatchesResult.expectedBatchesCount,
+
+      createdBatches: pharmacyBatchesResult.createdBatchesCount,
+
+      skippedBatches: pharmacyBatchesResult.skippedBatchesCount,
+    },
+  ]);
   console.log('Seed completed successfully.');
 
   console.log('\nUser accounts:');
