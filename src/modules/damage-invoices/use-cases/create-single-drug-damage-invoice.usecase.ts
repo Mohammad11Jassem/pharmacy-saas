@@ -36,7 +36,7 @@ export class CreateSingleDrugDamageInvoiceUseCase {
   constructor(private readonly unitOfWork: UnitOfWork) {}
 
   async execute(pharmacyId: number, dto: CreateSingleDrugDamageInvoiceDto) {
-    return this.unitOfWork.execute(async (tx) => {
+    return this.unitOfWork.executeSerializable(async (tx) => {
       // Ensure the pharmacy drug exists in the pharmacy
       await this.ensurePharmacyDrugExists(tx, pharmacyId, dto.pharmacyDrugId);
 
@@ -44,7 +44,7 @@ export class CreateSingleDrugDamageInvoiceUseCase {
       const resolvedBatches =
         dto.batchAllocations && dto.batchAllocations.length > 0
           ? await this.resolveSelectedBatches(tx, pharmacyId, dto)
-          : await this.resolveAutomaticBatche(tx, pharmacyId, dto);
+          : await this.resolveAutomaticBatches(tx, pharmacyId, dto);
 
       // Validate that the total quantityDamaged across all resolved batches equals dto.quantityDamaged , If one batch is used, this is already validated in  resolveAutomaticBatche
       const totalResolvedQuantity = resolvedBatches.reduce(
@@ -327,26 +327,128 @@ export class CreateSingleDrugDamageInvoiceUseCase {
   }
 
   // to get the batches to use for this damage invoice, automatically selecting the nearest batch by expiry date
-  private async resolveAutomaticBatche(
+  // private async resolveAutomaticBatche(
+  //   tx: Prisma.TransactionClient,
+  //   pharmacyId: number,
+  //   dto: CreateSingleDrugDamageInvoiceDto,
+  // ): Promise<ResolvedDamageBatch[]> {
+  //   const nearestBatch = await tx.batch.findFirst({
+  //     where: {
+  //       pharmacyDrugId: dto.pharmacyDrugId,
+
+  //       pharmacyDrug: {
+  //         pharmacyId,
+  //       },
+  //     },
+
+  //     orderBy: [
+  //       {
+  //         expiryDate: 'asc',
+  //       },
+  //       {
+  //         receivedDate: 'asc',
+  //       },
+  //       {
+  //         batchId: 'asc',
+  //       },
+  //     ],
+
+  //     select: {
+  //       batchId: true,
+  //       pharmacyDrugId: true,
+  //       initialQuantity: true,
+  //       soldQuantity: true,
+  //       expiryDate: true,
+  //       receivedDate: true,
+  //       pharmacyDrug: {
+  //         select: {
+  //           consumerPrice: true,
+  //         },
+  //       },
+  //     },
+  //   });
+
+  //   if (!nearestBatch) {
+  //     throw new BadRequestException('No batch found for this pharmacy drug');
+  //   }
+
+  //   const availableQuantity = calculateBatchAvailableQuantity(nearestBatch);
+
+  //   if (availableQuantity <= 0) {
+  //     throw new BadRequestException(
+  //       `Nearest batch ${nearestBatch.batchId} has no available quantity`,
+  //     );
+  //   }
+
+  //   if (dto.quantityDamaged > availableQuantity) {
+  //     throw new BadRequestException(
+  //       `Damaged quantity exceeds available quantity for nearest batch ${nearestBatch.batchId}`,
+  //     );
+  //   }
+  //   const unitConsumerPrice = nearestBatch.pharmacyDrug.consumerPrice;
+  //   return [
+  //     {
+  //       batchId: nearestBatch.batchId,
+  //       quantityDamaged: dto.quantityDamaged,
+  //       unitConsumerPrice,
+  //       notes: dto.itemNotes,
+  //     },
+  //   ];
+  // }
+
+  /**
+   * السيناريو التلقائي:
+   *
+   * يوزع الكمية المتلفة على الدفعات تدريجيًا،
+   * بدءًا من أقرب دفعة انتهاءً للصلاحية.
+   *
+   * مثال:
+   *
+   * الدفعة الأولى متاح فيها 5
+   * الدفعة الثانية متاح فيها 8
+   * الكمية المطلوبة = 10
+   *
+   * النتيجة:
+   *
+   * الدفعة الأولى: 5
+   * الدفعة الثانية: 5
+   */
+  private async resolveAutomaticBatches(
     tx: Prisma.TransactionClient,
     pharmacyId: number,
     dto: CreateSingleDrugDamageInvoiceDto,
   ): Promise<ResolvedDamageBatch[]> {
-    const nearestBatch = await tx.batch.findFirst({
+    /*
+     * نجلب جميع دفعات الدواء مرتبة حسب:
+     *
+     * 1. الأقرب انتهاءً للصلاحية.
+     * 2. الأقدم في تاريخ الاستلام.
+     * 3. رقم الدفعة لضمان ترتيب ثابت.
+     */
+    const batches = await tx.batch.findMany({
       where: {
         pharmacyDrugId: dto.pharmacyDrugId,
 
         pharmacyDrug: {
           pharmacyId,
         },
+        initialQuantity: {
+          gt: 0,
+        },
       },
 
       orderBy: [
         {
-          expiryDate: 'asc',
+          expiryDate: {
+            sort: 'asc',
+            nulls: 'last', // some of records may not have expiry date, so we put them at the end of the list
+          },
         },
         {
-          receivedDate: 'asc',
+          receivedDate: {
+            sort: 'asc',
+            nulls: 'last',
+          },
         },
         {
           batchId: 'asc',
@@ -355,11 +457,17 @@ export class CreateSingleDrugDamageInvoiceUseCase {
 
       select: {
         batchId: true,
+
         pharmacyDrugId: true,
+
         initialQuantity: true,
+
         soldQuantity: true,
+
         expiryDate: true,
+
         receivedDate: true,
+
         pharmacyDrug: {
           select: {
             consumerPrice: true,
@@ -368,31 +476,131 @@ export class CreateSingleDrugDamageInvoiceUseCase {
       },
     });
 
-    if (!nearestBatch) {
-      throw new BadRequestException('No batch found for this pharmacy drug');
+    if (batches.length === 0) {
+      throw new BadRequestException('No batches found for this pharmacy drug.');
     }
 
-    const availableQuantity = calculateBatchAvailableQuantity(nearestBatch);
+    /*
+     * نحسب الكمية المتاحة في كل دفعة.
+     *
+     * ثم نستبعد الدفعات التي لم يعد فيها
+     * أي كمية متاحة.
+     */
+    const availableBatches = batches
+      // this is the short statment
+      /**
+     * the long statment is 
+     * batches.map((batch) => {
+        return {
+          batch: batch,
+          availableQuantity:
+            calculateBatchAvailableQuantity(batch),
+        };
+      });
+     */
+      .map((batch) => ({
+        batch,
 
-    if (availableQuantity <= 0) {
+        availableQuantity: calculateBatchAvailableQuantity(batch),
+      }))
+      // this ({ availableQuantity }) named Object Destructuring instead of (batchWithAvailableQuantity) => batchWithAvailableQuantity.availableQuantity we use the short statment 
+      .filter(({ availableQuantity }) => availableQuantity > 0);
+
+    if (availableBatches.length === 0) {
       throw new BadRequestException(
-        `Nearest batch ${nearestBatch.batchId} has no available quantity`,
+        'No available quantity exists in the batches of this pharmacy drug.',
       );
     }
 
-    if (dto.quantityDamaged > availableQuantity) {
+    /*
+     * نحسب مجموع الكمية المتاحة
+     * في جميع دفعات الدواء.
+     */
+    // the reduce function takes two parameters, the first is the accumulator (total) and the second is the current value being processed in the array ({ availableQuantity }). The initial value of total is set to 0. For each batch, it adds the availableQuantity to the total and returns the new total for the next iteration. Finally, it returns the total available quantity across all batches.
+    const totalAvailableQuantity = availableBatches.reduce(
+      (total, { availableQuantity }) => total + availableQuantity,
+
+      0,
+    );
+
+    /*
+     * إذا كانت الكمية المطلوبة أكبر
+     * من مجموع المخزون المتاح في كل الدفعات،
+     * نرفض العملية قبل إنشاء الفاتورة.
+     */
+    if (dto.quantityDamaged > totalAvailableQuantity) {
+      const shortageQuantity = dto.quantityDamaged - totalAvailableQuantity;
+
       throw new BadRequestException(
-        `Damaged quantity exceeds available quantity for nearest batch ${nearestBatch.batchId}`,
+        [
+          `Requested damaged quantity (${dto.quantityDamaged})`,
+          `exceeds the total available stock (${totalAvailableQuantity}).`,
+          `Shortage quantity: ${shortageQuantity}.`,
+        ].join(' '),
       );
     }
-    const unitConsumerPrice = nearestBatch.pharmacyDrug.consumerPrice;
-    return [
-      {
-        batchId: nearestBatch.batchId,
-        quantityDamaged: dto.quantityDamaged,
+
+    let remainingQuantity = dto.quantityDamaged;
+
+    const resolvedBatches: ResolvedDamageBatch[] = [];
+
+    /*
+     * نبدأ بأقرب دفعة انتهاءً.
+     *
+     * إذا كانت كميتها غير كافية،
+     * نأخذ كامل الكمية المتاحة منها
+     * وننتقل إلى الدفعة التالية.
+     */
+    for (const { batch, availableQuantity } of availableBatches) {
+      /*
+       * انتهينا من توزيع كامل الكمية.
+       */
+      if (remainingQuantity === 0) {
+        break;
+      }
+
+      /*
+       * الكمية التي سنأخذها من هذه الدفعة:
+       *
+       * إما كامل الكمية المتبقية،
+       * أو كامل الكمية المتاحة في الدفعة،
+       * حسب أيهما أصغر.
+       */
+      const quantityFromBatch = Math.min(remainingQuantity, availableQuantity);
+
+      const unitConsumerPrice = batch.pharmacyDrug.consumerPrice;
+
+      if (unitConsumerPrice === null) {
+        throw new BadRequestException(
+          `Consumer price is not configured for pharmacy drug ${dto.pharmacyDrugId}.`,
+        );
+      }
+
+      resolvedBatches.push({
+        batchId: batch.batchId,
+
+        quantityDamaged: quantityFromBatch,
+
         unitConsumerPrice,
+
         notes: dto.itemNotes,
-      },
-    ];
+      });
+
+      remainingQuantity -= quantityFromBatch;
+    }
+
+    /*
+     * هذا الشرط احتياطي.
+     *
+     * نظريًا لن يحدث لأننا تحققنا مسبقًا
+     * أن مجموع الكميات المتاحة كافٍ.
+     */
+    if (remainingQuantity !== 0) {
+      throw new BadRequestException(
+        'Unable to allocate the full damaged quantity across available batches.',
+      );
+    }
+
+    return resolvedBatches;
   }
 }
