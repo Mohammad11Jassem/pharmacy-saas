@@ -694,6 +694,7 @@ export class SubscribePharmacyUseCase {
     // منع إنشاء اشتراك يبدأ في الماضي
     // =========================================================
 
+
     if (startsAt.getTime() < now.getTime()) {
       throw new BadRequestException(
         'Subscription start date cannot be in the past.',
@@ -716,6 +717,7 @@ export class SubscribePharmacyUseCase {
     //     'Subscription start date cannot be before today.',
     //   );
     // }
+
 
     // =========================================================
     // STEP 5

@@ -23,6 +23,7 @@ export class SaleInvoiceService {
   }
   findOne(pharmacyId: number, saleInvoiceId: number) {
     return this.findSaleInvoiceByIdUseCase.execute(pharmacyId, saleInvoiceId);
+    // return this.findSaleInvoiceByIdUseCase.executeFrontendCandidate(pharmacyId, saleInvoiceId);
   }
   findBatchesBySaleInvoice(pharmacyId: number, saleInvoiceId: number) {
     return this.findSaleInvoiceBatchesUseCase.execute(

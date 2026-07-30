@@ -7,6 +7,8 @@ import { PatientModule } from '../patient/patient.module';
 import { FindAllSaleInvoicesUseCase } from './use-cases/find-all-sale-invoices.usecase';
 import { FindSaleInvoiceByIdUseCase } from './use-cases/find-sale-invoice-by-id.usecase';
 import { FindSaleInvoiceBatchesUseCase } from './use-cases/find-sale-invoice-batches.usecase';
+import { SaleInvoicePostingService } from './services/sale-invoice-posting.service';
+
 
 @Module({
   imports: [PatientModule],
@@ -15,9 +17,11 @@ import { FindSaleInvoiceBatchesUseCase } from './use-cases/find-sale-invoice-bat
     SaleInvoiceService,
     UnitOfWork,
     CreateSaleInvoiceUseCase,
+    SaleInvoicePostingService,
     FindAllSaleInvoicesUseCase,
     FindSaleInvoiceByIdUseCase,
     FindSaleInvoiceBatchesUseCase,
   ],
+  exports: [SaleInvoicePostingService],
 })
 export class SaleInvoiceModule {}

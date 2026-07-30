@@ -1,10 +1,21 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
 import { CreatePurchaseOrderItemDto } from '../purchase-order-item/dto/create-purchase-order-item.dto';
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PurchaseOrderFilterDto } from './dto/create-purchase-order-filter.dto';
+import {
+  mapPurchaseOrderListResponse,
+  mapPurchaseOrderResponse,
+  purchaseOrderItemsWithTradeNameInclude,
+  purchaseOrderListInclude,
+} from './mappers/purchase-order-response.mapper';
+import { getPaginationParams, toPaginatedResult } from '../../common/pagination/pagination.util';
 
 @Injectable()
 export class PurchaseOrderService {
@@ -80,58 +91,168 @@ export class PurchaseOrderService {
     }
   }
 
+  // async findAll(pharmacyId: number, filters: PurchaseOrderFilterDto) {
+  //   const { supplierId, pharmacyDrugId } = filters;
+
+  //   return this.prisma.purchaseOrder.findMany({
+  //     where: {
+  //       pharmacyId,
+  //       ...(supplierId !== undefined ? { supplierId } : {}),
+  //       ...(pharmacyDrugId !== undefined
+  //         ? {
+  //             items: {
+  //               some: {
+  //                 pharmacyDrugId,
+  //               },
+  //             },
+  //           }
+  //         : {}),
+  //     },
+  //     include: {
+  //       supplier: true,
+  //       items: {
+  //         include: {
+  //           pharmacyDrug: true,
+  //         },
+  //       },
+  //     },
+  //     orderBy: {
+  //       createdAt: 'desc',
+  //     },
+  //   });
+  // }
+
+  // async findAll(pharmacyId: number, filters: PurchaseOrderFilterDto) {
+  //   const { supplierId, pharmacyDrugId } = filters;
+
+  //   const purchaseOrders = await this.prisma.purchaseOrder.findMany({
+  //     where: {
+  //       pharmacyId,
+
+  //       ...(supplierId !== undefined
+  //         ? {
+  //             supplierId,
+  //           }
+  //         : {}),
+
+  //       ...(pharmacyDrugId !== undefined
+  //         ? {
+  //             items: {
+  //               some: {
+  //                 pharmacyDrugId,
+  //               },
+  //             },
+  //           }
+  //         : {}),
+  //     },
+
+  //     // لا نجلب items، وإنما supplier وعدد items فقط.
+  //     include: purchaseOrderListInclude,
+
+  //     orderBy: {
+  //       createdAt: 'desc',
+  //     },
+  //   });
+
+  //   return purchaseOrders.map(mapPurchaseOrderListResponse);
+  // }
+
+  // async findOne(pharmacyId: number, id: number) {
+  //   const po = await this.prisma.purchaseOrder.findFirst({
+  //     where: {
+  //       purchaseOrderId: id,
+  //       pharmacyId,
+  //     },
+  //     include: {
+  //       supplier: true,
+  //       items: {
+  //         include: {
+  //           pharmacyDrug: {
+  //             include: {
+  //               drug: true, // اختياري: تفاصيل الـ drug إذا احتجت
+  //             },
+  //           },
+  //         },
+  //       },
+  //     },
+  //   });
+
+  //   if (!po) throw new NotFoundException('Purchase order not found');
+  //   return po;
+  // }
+
   async findAll(pharmacyId: number, filters: PurchaseOrderFilterDto) {
     const { supplierId, pharmacyDrugId } = filters;
 
-    return this.prisma.purchaseOrder.findMany({
-      where: {
-        pharmacyId,
-        ...(supplierId !== undefined ? { supplierId } : {}),
-        ...(pharmacyDrugId !== undefined
-          ? {
-              items: {
-                some: {
-                  pharmacyDrugId,
-                },
-              },
-            }
-          : {}),
-      },
-      include: {
-        supplier: true,
-        items: {
-          include: {
-            pharmacyDrug: true,
-          },
-        },
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
-  }
+    const { page, limit, skip, take } = getPaginationParams(
+      filters.page,
+      filters.limit,
+    );
 
+    const where: Prisma.PurchaseOrderWhereInput = {
+      pharmacyId,
+
+      ...(supplierId !== undefined
+        ? {
+            supplierId,
+          }
+        : {}),
+
+      ...(pharmacyDrugId !== undefined
+        ? {
+            items: {
+              some: {
+                pharmacyDrugId,
+              },
+            },
+          }
+        : {}),
+    };
+
+    const [purchaseOrders, total] = await this.prisma.$transaction([
+      this.prisma.purchaseOrder.findMany({
+        where,
+
+        include: purchaseOrderListInclude,
+
+        orderBy: {
+          createdAt: 'desc',
+        },
+
+        skip,
+        take,
+      }),
+
+      this.prisma.purchaseOrder.count({
+        where,
+      }),
+    ]);
+
+    return toPaginatedResult(
+      purchaseOrders.map(mapPurchaseOrderListResponse),
+      total,
+      page,
+      limit,
+    );
+  }
   async findOne(pharmacyId: number, id: number) {
-    const po = await this.prisma.purchaseOrder.findFirst({
+    const purchaseOrder = await this.prisma.purchaseOrder.findFirst({
       where: {
         purchaseOrderId: id,
         pharmacyId,
       },
+
       include: {
         supplier: true,
-        items: {
-          include: {
-            pharmacyDrug: {
-              include: {
-                drug: true, // اختياري: تفاصيل الـ drug إذا احتجت
-              },
-            },
-          },
-        },
+
+        ...purchaseOrderItemsWithTradeNameInclude,
       },
     });
 
-    if (!po) throw new NotFoundException('Purchase order not found');
-    return po;
+    if (!purchaseOrder) {
+      throw new NotFoundException('Purchase order not found');
+    }
+
+    return mapPurchaseOrderResponse(purchaseOrder);
   }
 }
