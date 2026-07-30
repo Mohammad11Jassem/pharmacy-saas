@@ -920,7 +920,7 @@ model SaleInvoiceItem {
 
   customerRequestItemId Int? @map("customer_request_item_id")
 
-  customerRequestItem CustomerRequestItem? @relation(fields: [customerRequestItemId],references: [customerRequestItemId],onDelete: SetNull)
+  customerRequestItem CustomerRequestItem? @relation(fields: [customerRequestItemId], references: [customerRequestItemId], onDelete: SetNull)
 
   unitType         UnitType @map("unit_type")
   baseQuantity     Int      @map("base_quantity")
