@@ -13,16 +13,29 @@ import {
   toPaginatedResult,
 } from '../../common/pagination/pagination.util';
 import {
+  customerRequestDetailsInclude,
   customerRequestListInclude,
-  customerRequestWithTradeNameInclude,
+  // customerRequestWithTradeNameInclude,
   mapCustomerRequestListResponse,
   mapCustomerRequestResponse,
 } from './mappers/customer-request-response.mapper';
+import { GetCustomerRequestCheckoutPreviewUseCase } from './use-cases/get-customer-request-checkout-preview.usecase';
+import { CheckoutCustomerRequestDto } from './dto/checkout-customer-request.dto';
+import { CheckoutCustomerRequestUseCase } from './use-cases/checkout-customer-request.usecase';
+import { GetCustomerRequestSaleInvoicesDto } from './dto/get-customer-request-sale-invoices.dto';
+import { FindCustomerRequestSaleInvoicesUseCase } from './use-cases/find-customer-request-sale-invoices.usecase';
+import { CancelCustomerRequestUseCase } from './use-cases/cancel-customer-request.usecase';
 
 @Injectable()
 export class CustomerRequestService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly getCustomerRequestCheckoutPreviewUseCase: GetCustomerRequestCheckoutPreviewUseCase,
+    private readonly checkoutCustomerRequestUseCase: CheckoutCustomerRequestUseCase,
+    private readonly findCustomerRequestSaleInvoicesUseCase: FindCustomerRequestSaleInvoicesUseCase,
+        private readonly cancelCustomerRequestUseCase: CancelCustomerRequestUseCase,
 
+  ) {}
   async create(pharmacyId: number, dto: CreateCustomerRequestDto) {
     if (!Array.isArray(dto.items) || dto.items.length === 0) {
       throw new BadRequestException('items must be a non-empty array');
@@ -297,7 +310,6 @@ export class CustomerRequestService {
 
   //   return request;
   // }
-
   async findOne(pharmacyId: number, customerRequestId: number) {
     const request = await this.prisma.customerRequest.findFirst({
       where: {
@@ -305,7 +317,7 @@ export class CustomerRequestService {
         pharmacyId,
       },
 
-      include: customerRequestWithTradeNameInclude,
+      include: customerRequestDetailsInclude,
     });
 
     if (!request) {
@@ -315,6 +327,58 @@ export class CustomerRequestService {
     return mapCustomerRequestResponse(request);
   }
 
+  findSaleInvoices(
+    pharmacyId: number,
+    customerRequestId: number,
+    query: GetCustomerRequestSaleInvoicesDto,
+  ) {
+    return this.findCustomerRequestSaleInvoicesUseCase.execute(
+      pharmacyId,
+      customerRequestId,
+      query,
+    );
+  }
+  // async findOne(pharmacyId: number, customerRequestId: number) {
+  //   const request = await this.prisma.customerRequest.findFirst({
+  //     where: {
+  //       customerRequestId,
+  //       pharmacyId,
+  //     },
+
+  //     include: customerRequestWithTradeNameInclude,
+  //   });
+
+  //   if (!request) {
+  //     throw new NotFoundException('Customer request not found');
+  //   }
+
+  //   return mapCustomerRequestResponse(request);
+  // }
+
+  getCheckoutPreview(pharmacyId: number, customerRequestId: number) {
+    return this.getCustomerRequestCheckoutPreviewUseCase.execute(
+      pharmacyId,
+      customerRequestId,
+    );
+  }
+  checkout(
+    pharmacyId: number,
+    customerRequestId: number,
+    dto: CheckoutCustomerRequestDto,
+  ) {
+    return this.checkoutCustomerRequestUseCase.execute(
+      pharmacyId,
+      customerRequestId,
+      dto,
+    );
+  }
+
+  cancel(pharmacyId: number, customerRequestId: number) {
+    return this.cancelCustomerRequestUseCase.execute(
+      pharmacyId,
+      customerRequestId,
+    );
+  }
   update(id: number, updateCustomerRequestDto: UpdateCustomerRequestDto) {
     return `This action updates a #${id} customerRequest`;
   }
