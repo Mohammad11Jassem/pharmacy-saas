@@ -1,11 +1,13 @@
 import {
   Body,
   Controller,
+  Get,
   HttpCode,
   HttpStatus,
   Param,
   ParseIntPipe,
   Post,
+  Query,
 } from '@nestjs/common';
 
 import { ResponseMessage } from '../../../common/decorators/response-message.decorator';
@@ -21,12 +23,38 @@ import { CreateRagConversationDto } from '../dto/create-rag-conversation.dto';
 import { ChattingService } from '../services/chatting.service';
 import { SendChatMessageDto } from '../dto/send-chat-message.dto';
 import { StartChatConversationDto } from '../dto/start-chat-conversation.dto';
+import { ListChatConversationsQueryDto } from '../dto/list-chat-conversations-query.dto';
+import { ListChatMessagesQueryDto } from '../dto/list-chat-messages-query.dto';
 
 @Auth(AuthType.Bearer)
 @Roles(AccountType.PHARMACY)
 @Controller('Chatting/conversations')
 export class ChattingController {
   constructor(private readonly chattingService: ChattingService) {}
+
+  @Get()
+  @ResponseMessage('Chat conversations retrieved successfully.')
+  listConversations(
+    @ActiveUser('sub') pharmacyId: number,
+    @Query() query: ListChatConversationsQueryDto,
+  ) {
+    return this.chattingService.listConversations(pharmacyId, query);
+  }
+
+  @Get(':ragConversationId/messages')
+  @ResponseMessage('Chat conversation messages retrieved successfully.')
+  listMessages(
+    @ActiveUser('sub') pharmacyId: number,
+    @Param('ragConversationId', ParseIntPipe)
+    ragConversationId: number,
+    @Query() query: ListChatMessagesQueryDto,
+  ) {
+    return this.chattingService.listMessages(
+      pharmacyId,
+      ragConversationId,
+      query,
+    );
+  }
 
   @Post()
   @ResponseMessage('RAG conversation created successfully.')
