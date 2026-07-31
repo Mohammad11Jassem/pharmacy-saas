@@ -23,13 +23,6 @@ export class ListUnexpiredPrivateOffersUseCase {
 
     /*
      * نجلب كل العروض الخاصة غير المنتهية في النظام.
-     *
-     * لا نهتم هنا:
-     * - هل تم إسناد العرض إلى صيدلية أم لا.
-     * - بعدد الصيدليات التي حصلت عليه.
-     * - بحالة الـ PharmacyOfferGrant.
-     *
-     * مصدر البيانات هو PlanOffer فقط.
      */
     const offers =
       await this.prisma.planOffer.findMany({
@@ -40,8 +33,6 @@ export class ListUnexpiredPrivateOffersUseCase {
 
           /*
            * العرض لم تنتهِ صلاحيته بعد.
-           *
-           * هذا الشرط يعيد:
            * - العروض الفعالة حاليًا.
            * - العروض المجدولة للمستقبل.
            */

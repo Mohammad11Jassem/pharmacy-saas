@@ -276,7 +276,7 @@ export class FindPharmacySubscriptionsUseCase {
      * 3- The next subscription is still scheduled.
      * 4- The current subscription was cancelled.
      */
-    console.log('currentSubscription', currentSubscription)
+    // console.log('currentSubscription', currentSubscription)
     const mappedCurrentSubscription = currentSubscription
       ? this.mapSubscription(currentSubscription, now)
       : null;

@@ -694,28 +694,30 @@ export class SubscribePharmacyUseCase {
     // منع إنشاء اشتراك يبدأ في الماضي
     // =========================================================
 
-    // if (startsAt.getTime() < now.getTime()) {
-    //   throw new BadRequestException(
-    //     'Subscription start date cannot be in the past.',
-    //   );
-    // }
-    const todayUtc = Date.UTC(
-      now.getUTCFullYear(),
-      now.getUTCMonth(),
-      now.getUTCDate(),
-    );
 
-    const startDateUtc = Date.UTC(
-      startsAt.getUTCFullYear(),
-      startsAt.getUTCMonth(),
-      startsAt.getUTCDate(),
-    );
-
-    if (startDateUtc < todayUtc) {
+    if (startsAt.getTime() < now.getTime()) {
       throw new BadRequestException(
-        'Subscription start date cannot be before today.',
+        'Subscription start date cannot be in the past.',
       );
     }
+    // const todayUtc = Date.UTC(
+    //   now.getUTCFullYear(),
+    //   now.getUTCMonth(),
+    //   now.getUTCDate(),
+    // );
+
+    // const startDateUtc = Date.UTC(
+    //   startsAt.getUTCFullYear(),
+    //   startsAt.getUTCMonth(),
+    //   startsAt.getUTCDate(),
+    // );
+
+    // if (startDateUtc < todayUtc) {
+    //   throw new BadRequestException(
+    //     'Subscription start date cannot be before today.',
+    //   );
+    // }
+
 
     // =========================================================
     // STEP 5
