@@ -23,6 +23,10 @@ import { JwtModule } from '@nestjs/jwt';
 import { ChatRealtimePublisher } from './services/chat-realtime-publisher.service';
 import { ChatSocketAuthService } from './services/chat-socket-auth.service';
 import { ChattingGateway } from './gateways/chatting.gateway';
+import { ListChatConversationsUseCase } from './use-cases/list-chat-conversations.usecase';
+import { ListChatMessagesUseCase } from './use-cases/list-chat-messages.usecase';
+import { GetChatRequestStatusUseCase } from './use-cases/get-chat-request-status.usecase';
+import { ChatRequestController } from './controllers/chat-request.controller';
 
 @Module({
   imports: [
@@ -54,7 +58,7 @@ import { ChattingGateway } from './gateways/chatting.gateway';
       },
     }),
   ],
-  controllers: [ChattingController],
+  controllers: [ChattingController ,ChatRequestController],
 
   providers: [
     ChattingService,
@@ -87,6 +91,12 @@ import { ChattingGateway } from './gateways/chatting.gateway';
     ChattingGateway,
 
     ChatRealtimePublisher,
+
+    ListChatConversationsUseCase,
+
+    ListChatMessagesUseCase,
+
+    GetChatRequestStatusUseCase,
   ],
 
   exports: [
