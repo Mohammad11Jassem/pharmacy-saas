@@ -121,6 +121,107 @@ export class BatchService {
     });
   }
 
+  // async findByPharmacyDrug(
+  //   pharmacyId: number,
+  //   pharmacyDrugId: number,
+  //   query: GetPharmacyDrugBatchesQueryDto,
+  // ) {
+  //   const { fromDate, toDate, supplierId } = query;
+
+  //   const { page, limit, skip, take } = getPaginationParams(
+  //     query.page,
+  //     query.limit,
+  //   );
+
+  //   if (
+  //     fromDate &&
+  //     toDate &&
+  //     new Date(`${fromDate}T00:00:00.000Z`) >
+  //       new Date(`${toDate}T00:00:00.000Z`)
+  //   ) {
+  //     throw new BadRequestException(
+  //       'fromDate must be before or equal to toDate',
+  //     );
+  //   }
+  //   const where: Prisma.BatchWhereInput = {
+  //     pharmacyDrugId,
+
+  //     // ضمان أن الدواء تابع للصيدلية المسجلة حالياً.
+  //     pharmacyDrug: {
+  //       pharmacyId,
+  //     },
+
+  //     ...(fromDate || toDate
+  //       ? {
+  //           expiryDate: {
+  //             ...(fromDate
+  //               ? {
+  //                   gte: new Date(`${fromDate}T00:00:00.000Z`),
+  //                 }
+  //               : {}),
+
+  //             ...(toDate
+  //               ? {
+  //                   lte: new Date(`${toDate}T00:00:00.000Z`),
+  //                 }
+  //               : {}),
+  //           },
+  //         }
+  //       : {}),
+
+  //     /**
+  //      * Batch
+  //      *   -> SupplierInvoiceItem
+  //      *   -> SupplierInvoice
+  //      *   -> Supplier
+  //      */
+  //     ...(supplierId
+  //       ? {
+  //           supplierInvoiceItem: {
+  //             is: {
+  //               supplierInvoice: {
+  //                 supplierId,
+
+  //                 // ضمان أن المورد تابع للصيدلية الحالية.
+  //                 supplier: {
+  //                   pharmacyId,
+  //                 },
+  //               },
+  //             },
+  //           },
+  //         }
+  //       : {}),
+  //   };
+
+  //   const [batches, total] = await this.prisma.$transaction([
+  //     this.prisma.batch.findMany({
+  //       where,
+  //       skip,
+  //       take,
+
+  //       include: {
+  //         pharmacyDrug: true,
+
+  //         supplierInvoiceItem: {
+  //           include: {
+  //             supplierInvoice: true,
+  //           },
+  //         },
+  //       },
+
+  //       orderBy: {
+  //         createdAt: 'desc',
+  //       },
+  //     }),
+
+  //     this.prisma.batch.count({
+  //       where,
+  //     }),
+  //   ]);
+
+  //   return toPaginatedResult(batches, total, page, limit);
+  // }
+
   async findByPharmacyDrug(
     pharmacyId: number,
     pharmacyDrugId: number,
@@ -143,10 +244,10 @@ export class BatchService {
         'fromDate must be before or equal to toDate',
       );
     }
+
     const where: Prisma.BatchWhereInput = {
       pharmacyDrugId,
 
-      // ضمان أن الدواء تابع للصيدلية المسجلة حالياً.
       pharmacyDrug: {
         pharmacyId,
       },
@@ -169,12 +270,6 @@ export class BatchService {
           }
         : {}),
 
-      /**
-       * Batch
-       *   -> SupplierInvoiceItem
-       *   -> SupplierInvoice
-       *   -> Supplier
-       */
       ...(supplierId
         ? {
             supplierInvoiceItem: {
@@ -182,7 +277,6 @@ export class BatchService {
                 supplierInvoice: {
                   supplierId,
 
-                  // ضمان أن المورد تابع للصيدلية الحالية.
                   supplier: {
                     pharmacyId,
                   },
@@ -200,7 +294,25 @@ export class BatchService {
         take,
 
         include: {
-          pharmacyDrug: true,
+          pharmacyDrug: {
+            include: {
+              drug: {
+                include: {
+                  generalDrug: {
+                    select: {
+                      unitsPerBox: true,
+                    },
+                  },
+
+                  privateDrug: {
+                    select: {
+                      unitsPerBox: true,
+                    },
+                  },
+                },
+              },
+            },
+          },
 
           supplierInvoiceItem: {
             include: {
@@ -219,7 +331,44 @@ export class BatchService {
       }),
     ]);
 
-    return toPaginatedResult(batches, total, page, limit);
+    const mappedBatches = batches.map((batch) => {
+      const drugInfo =
+        batch.pharmacyDrug.drug.generalDrug ??
+        batch.pharmacyDrug.drug.privateDrug;
+
+      const unitsPerBox =
+        drugInfo?.unitsPerBox && Number(drugInfo.unitsPerBox) > 0
+          ? Number(drugInfo.unitsPerBox)
+          : 1;
+
+      const initialBaseQuantity = Number(batch.initialQuantity);
+
+      const soldBaseQuantity = Number(batch.soldQuantity);
+
+      const initialQuantity = Math.floor(initialBaseQuantity / unitsPerBox);
+
+      const initialIndividualUnits = initialBaseQuantity % unitsPerBox;
+
+      const soldQuantity = Math.floor(soldBaseQuantity / unitsPerBox);
+
+      const soldIndividualUnits = soldBaseQuantity % unitsPerBox;
+
+      return {
+        ...batch,
+
+        // unitsPerBox,
+
+        // Number of complete boxes
+        initialQuantity,
+        soldQuantity,
+
+        // Remaining individual units
+        initialIndividualUnits,
+        soldIndividualUnits,
+      };
+    });
+
+    return toPaginatedResult(mappedBatches, total, page, limit);
   }
 
   async addOpeningStockBatches(
@@ -457,7 +606,7 @@ export class BatchService {
       );
     }
   }
-  
+
   private calculateInvoiceStockingStatus(
     invoice: SupplierInvoiceForStocking,
   ): SupplierInvoiceStatus {

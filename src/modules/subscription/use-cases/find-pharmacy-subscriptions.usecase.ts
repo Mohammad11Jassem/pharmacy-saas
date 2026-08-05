@@ -343,12 +343,14 @@ export class FindPharmacySubscriptionsUseCase {
        * Return the effective status according
        * to the subscription dates.
        */
-      status: this.resolveEffectiveStatus(
-        subscription.status,
-        subscription.startsAt,
-        subscription.endsAt,
-        now,
-      ),
+      // status: this.resolveEffectiveStatus(
+      //   subscription.status,
+      //   subscription.startsAt,
+      //   subscription.endsAt,
+      //   now,
+      // ),
+      status: subscription.status,
+      
 
       startsAt: subscription.startsAt,
 

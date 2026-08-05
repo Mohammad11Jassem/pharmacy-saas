@@ -1,5 +1,7 @@
-
-import { decimalToNumber, formatMoney } from '../helpers/pharmacy-drug-function.helper';
+import {
+  decimalToNumber,
+  formatMoney,
+} from '../helpers/pharmacy-drug-function.helper';
 import type { ListPharmacyDrugPayload } from '../selects/list-pharmacy-drug.select';
 
 export function mapPharmacyDrug(pharmacyDrug: ListPharmacyDrugPayload) {
@@ -8,8 +10,7 @@ export function mapPharmacyDrug(pharmacyDrug: ListPharmacyDrugPayload) {
   const drugInfo = generalDrug ?? privateDrug;
 
   const availableQuantity = pharmacyDrug.batches.reduce(
-    (sum, batch) =>
-      sum + (batch.initialQuantity - batch.soldQuantity),
+    (sum, batch) => sum + (batch.initialQuantity - batch.soldQuantity),
     0,
   );
 
@@ -23,12 +24,11 @@ export function mapPharmacyDrug(pharmacyDrug: ListPharmacyDrugPayload) {
     pharmacyDrug.minStockAlert !== undefined &&
     availableQuantity <= pharmacyDrug.minStockAlert;
 
-  const stockStatus =
-    isOutOfStock
-      ? 'OUT_OF_STOCK'
-      : isLowStock
-        ? 'LOW_STOCK'
-        : 'AVAILABLE';
+  const stockStatus = isOutOfStock
+    ? 'OUT_OF_STOCK'
+    : isLowStock
+      ? 'LOW_STOCK'
+      : 'AVAILABLE';
 
   const ingredients = generalDrug
     ? generalDrug.ingredients.map((item) => ({
@@ -60,9 +60,7 @@ export function mapPharmacyDrug(pharmacyDrug: ListPharmacyDrugPayload) {
       ? ingredients
           .map((item) => {
             const strength =
-              item.strengthValue !== null
-                ? ` ${item.strengthValue}`
-                : '';
+              item.strengthValue !== null ? ` ${item.strengthValue}` : '';
 
             const unit = item.unit ? ` ${item.unit}` : '';
 
@@ -95,9 +93,7 @@ export function mapPharmacyDrug(pharmacyDrug: ListPharmacyDrugPayload) {
     source: pharmacyDrug.drug.source,
 
     sourceText:
-      pharmacyDrug.drug.source === 'GENERAL'
-        ? 'دواء عام'
-        : 'دواء خاص',
+      pharmacyDrug.drug.source === 'GENERAL' ? 'دواء عام' : 'دواء خاص',
 
     tradeName: drugInfo?.tradeName ?? null,
 
@@ -141,8 +137,17 @@ export function mapPharmacyDrug(pharmacyDrug: ListPharmacyDrugPayload) {
     },
 
     stock: {
-      availableQuantity: unitsPerBox ? Math.floor(availableQuantity / unitsPerBox) : availableQuantity,
-      availableQuantityText:  unitsPerBox ? `${Math.floor(availableQuantity / unitsPerBox)} عبوة` : `${availableQuantity} عبوة`, //`${availableQuantity} عبوة`,
+      availableQuantity: unitsPerBox
+        ? Math.floor(availableQuantity / unitsPerBox)
+        : availableQuantity,
+
+      availableQuantityText: unitsPerBox
+        ? `${Math.floor(availableQuantity / unitsPerBox)} عبوة`
+        : `${availableQuantity} عبوة`, //`${availableQuantity} عبوة`,
+        
+      availableIndividualUnits: unitsPerBox
+        ? availableQuantity % unitsPerBox
+        : 0,
       minStockAlert,
       isLowStock,
       isOutOfStock,

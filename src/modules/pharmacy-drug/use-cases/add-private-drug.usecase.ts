@@ -188,6 +188,7 @@ export class AddPrivateDrugUseCase {
           await createPharmacyDrugBatchesWithTx(
             tx,
             pharmacyDrug.pharmacyDrugId,
+            privateDrug.unitsPerBox,
             dto.batches,
           );
         return {

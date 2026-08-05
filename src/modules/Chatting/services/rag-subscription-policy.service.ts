@@ -60,7 +60,7 @@ export class RagSubscriptionPolicyService {
           pharmacyId: true,
           startsAt: true,
           endsAt: true,
-
+          status: true,
           plan: {
             select: {
               planId: true,
@@ -75,6 +75,7 @@ export class RagSubscriptionPolicyService {
         },
       });
 
+      // console.log('subscription', subscription);
     if (!subscription) {
       throw new ForbiddenException(
         'An active pharmacy subscription is required to use RAG.',

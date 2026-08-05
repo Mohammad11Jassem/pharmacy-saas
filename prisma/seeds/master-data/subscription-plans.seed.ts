@@ -14,7 +14,7 @@ type SubscriptionPlanSeed = {
   planPrice: string;
   currency: string;
   type: SubscriptionPlanType;
-
+  ragEnabled: boolean;
   offer: {
     code: string;
     title: string;
@@ -38,7 +38,7 @@ const subscriptionPlans: SubscriptionPlanSeed[] = [
     currency: 'SP',
 
     type: SubscriptionPlanType.STARTER,
-
+    ragEnabled: false,
     offer: {
       code: 'STARTER_LAUNCH_20',
 
@@ -66,7 +66,7 @@ const subscriptionPlans: SubscriptionPlanSeed[] = [
     currency: 'SP',
 
     type: SubscriptionPlanType.PROFESSIONAL,
-
+    ragEnabled: true,
     offer: {
       code: 'PROFESSIONAL_LAUNCH_25',
 
@@ -94,7 +94,7 @@ const subscriptionPlans: SubscriptionPlanSeed[] = [
     currency: 'SP',
 
     type: SubscriptionPlanType.ENTERPRISE,
-
+    ragEnabled: true,
     offer: {
       code: 'ENTERPRISE_LAUNCH_30',
 

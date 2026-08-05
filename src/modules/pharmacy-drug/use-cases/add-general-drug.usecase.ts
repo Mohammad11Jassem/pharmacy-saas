@@ -91,6 +91,7 @@ export class AddGeneralDrugUseCase {
           await createPharmacyDrugBatchesWithTx(
             tx,
             pharmacyDrug.pharmacyDrugId,
+            generalDrug.unitsPerBox,
             dto.batches,
           );
         return {

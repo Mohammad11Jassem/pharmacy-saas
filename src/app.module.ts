@@ -32,6 +32,8 @@ import { SubscriptionModule } from './modules/subscription/subscription.module';
 import { ChattingModule } from './modules/Chatting/chatting.module';
 import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
 
 @Module({
   imports: [
@@ -109,6 +111,8 @@ import { ScheduleModule } from '@nestjs/schedule';
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
     },
+    AppService
   ],
+  controllers: [AppController],
 })
 export class AppModule {}

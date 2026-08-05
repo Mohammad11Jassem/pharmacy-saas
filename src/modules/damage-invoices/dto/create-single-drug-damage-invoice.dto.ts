@@ -29,6 +29,11 @@ export class CreateSingleDrugDamageInvoiceDto {
   @IsPositive()
   pharmacyDrugId: number;
 
+  @IsOptional()
+  @IsString()
+  @MaxLength(255)
+  idempotencyKey?: string;
+
   /**
    * الكمية الإجمالية المتلفة من هذا الدواء.
    */

@@ -17,6 +17,11 @@ export class CreateDamageInvoiceDto {
 
   @IsOptional()
   @IsString()
+  @MaxLength(255)
+  idempotencyKey?: string;
+  
+  @IsOptional()
+  @IsString()
   @MaxLength(1000)
   notes?: string;
 

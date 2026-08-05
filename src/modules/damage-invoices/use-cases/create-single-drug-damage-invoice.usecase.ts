@@ -37,22 +37,62 @@ export class CreateSingleDrugDamageInvoiceUseCase {
 
   async execute(pharmacyId: number, dto: CreateSingleDrugDamageInvoiceDto) {
     return this.unitOfWork.executeSerializable(async (tx) => {
-      // Ensure the pharmacy drug exists in the pharmacy
-      await this.ensurePharmacyDrugExists(tx, pharmacyId, dto.pharmacyDrugId);
+      // // Ensure the pharmacy drug exists in the pharmacy
+      // await this.ensurePharmacyDrugExists(tx, pharmacyId, dto.pharmacyDrugId);
 
-      // Resolve the batches to use for this damage invoice, either from the provided batchAllocations or automatically
+      // // Resolve the batches to use for this damage invoice, either from the provided batchAllocations or automatically
+      // const resolvedBatches =
+      //   dto.batchAllocations && dto.batchAllocations.length > 0
+      //     ? await this.resolveSelectedBatches(tx, pharmacyId, dto)
+      //     : await this.resolveAutomaticBatches(tx, pharmacyId, dto);
+
+      // // Validate that the total quantityDamaged across all resolved batches equals dto.quantityDamaged , If one batch is used, this is already validated in  resolveAutomaticBatche
+      // const totalResolvedQuantity = resolvedBatches.reduce(
+      //   (sum, item) => sum + item.quantityDamaged,
+      //   0,
+      // );
+
+      // if (totalResolvedQuantity !== dto.quantityDamaged) {
+      //   throw new BadRequestException(
+      //     'Resolved damaged quantity does not match requested quantity',
+      //   );
+      // }
+      const pharmacyDrug = await this.ensurePharmacyDrugExists(
+        tx,
+        pharmacyId,
+        dto.pharmacyDrugId,
+      );
+
+      const unitsPerBox = pharmacyDrug.unitsPerBox;
+
+      /*
+       * Frontend sends quantities as boxes.
+       * Convert them to base units for stock operations.
+       */
+      const normalizedDto: CreateSingleDrugDamageInvoiceDto = {
+        ...dto,
+
+        quantityDamaged: dto.quantityDamaged * unitsPerBox,
+
+        batchAllocations: dto.batchAllocations?.map((allocation) => ({
+          ...allocation,
+
+          quantityDamaged: allocation.quantityDamaged * unitsPerBox,
+        })),
+      };
+
       const resolvedBatches =
-        dto.batchAllocations && dto.batchAllocations.length > 0
-          ? await this.resolveSelectedBatches(tx, pharmacyId, dto)
-          : await this.resolveAutomaticBatches(tx, pharmacyId, dto);
+        normalizedDto.batchAllocations &&
+        normalizedDto.batchAllocations.length > 0
+          ? await this.resolveSelectedBatches(tx, pharmacyId, normalizedDto)
+          : await this.resolveAutomaticBatches(tx, pharmacyId, normalizedDto);
 
-      // Validate that the total quantityDamaged across all resolved batches equals dto.quantityDamaged , If one batch is used, this is already validated in  resolveAutomaticBatche
       const totalResolvedQuantity = resolvedBatches.reduce(
         (sum, item) => sum + item.quantityDamaged,
         0,
       );
 
-      if (totalResolvedQuantity !== dto.quantityDamaged) {
+      if (totalResolvedQuantity !== normalizedDto.quantityDamaged) {
         throw new BadRequestException(
           'Resolved damaged quantity does not match requested quantity',
         );
@@ -65,6 +105,8 @@ export class CreateSingleDrugDamageInvoiceUseCase {
           invoiceType: PharmacyInvoiceType.DAMAGE,
 
           invoiceDate: dto.invoiceDate ? new Date(dto.invoiceDate) : new Date(),
+
+          idempotencyKey: dto.idempotencyKey?.trim() || undefined,
 
           notes: dto.notes?.trim(),
 
@@ -203,27 +245,27 @@ export class CreateSingleDrugDamageInvoiceUseCase {
     });
   }
 
-  private async ensurePharmacyDrugExists(
-    tx: Prisma.TransactionClient,
-    pharmacyId: number,
-    pharmacyDrugId: number,
-  ) {
-    const pharmacyDrug = await tx.pharmacyDrug.findFirst({
-      where: {
-        pharmacyDrugId,
-        pharmacyId,
-      },
-      select: {
-        pharmacyDrugId: true,
-      },
-    });
+  // private async ensurePharmacyDrugExists(
+  //   tx: Prisma.TransactionClient,
+  //   pharmacyId: number,
+  //   pharmacyDrugId: number,
+  // ) {
+  //   const pharmacyDrug = await tx.pharmacyDrug.findFirst({
+  //     where: {
+  //       pharmacyDrugId,
+  //       pharmacyId,
+  //     },
+  //     select: {
+  //       pharmacyDrugId: true,
+  //     },
+  //   });
 
-    if (!pharmacyDrug) {
-      throw new NotFoundException(`Pharmacy drug not found: ${pharmacyDrugId}`);
-    }
+  //   if (!pharmacyDrug) {
+  //     throw new NotFoundException(`Pharmacy drug not found: ${pharmacyDrugId}`);
+  //   }
 
-    return pharmacyDrug;
-  }
+  //   return pharmacyDrug;
+  // }
 
   // to get the batches to use for this damage invoice, either from the provided batchAllocations
   private async resolveSelectedBatches(
@@ -489,21 +531,21 @@ export class CreateSingleDrugDamageInvoiceUseCase {
     const availableBatches = batches
       // this is the short statment
       /**
-     * the long statment is 
-     * batches.map((batch) => {
-        return {
-          batch: batch,
-          availableQuantity:
-            calculateBatchAvailableQuantity(batch),
-        };
-      });
-     */
+       * the long statment is 
+       * batches.map((batch) => {
+          return {
+            batch: batch,
+            availableQuantity:
+              calculateBatchAvailableQuantity(batch),
+          };
+        });
+      */
       .map((batch) => ({
         batch,
 
         availableQuantity: calculateBatchAvailableQuantity(batch),
       }))
-      // this ({ availableQuantity }) named Object Destructuring instead of (batchWithAvailableQuantity) => batchWithAvailableQuantity.availableQuantity we use the short statment 
+      // this ({ availableQuantity }) named Object Destructuring instead of (batchWithAvailableQuantity) => batchWithAvailableQuantity.availableQuantity we use the short statment
       .filter(({ availableQuantity }) => availableQuantity > 0);
 
     if (availableBatches.length === 0) {
@@ -602,5 +644,56 @@ export class CreateSingleDrugDamageInvoiceUseCase {
     }
 
     return resolvedBatches;
+  }
+  private async ensurePharmacyDrugExists(
+    tx: Prisma.TransactionClient,
+    pharmacyId: number,
+    pharmacyDrugId: number,
+  ) {
+    const pharmacyDrug = await tx.pharmacyDrug.findFirst({
+      where: {
+        pharmacyDrugId,
+        pharmacyId,
+      },
+      select: {
+        pharmacyDrugId: true,
+
+        drug: {
+          select: {
+            generalDrug: {
+              select: {
+                unitsPerBox: true,
+              },
+            },
+
+            privateDrug: {
+              select: {
+                unitsPerBox: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!pharmacyDrug) {
+      throw new NotFoundException(`Pharmacy drug not found: ${pharmacyDrugId}`);
+    }
+
+    const unitsPerBox = Number(
+      pharmacyDrug.drug.generalDrug?.unitsPerBox ??
+        pharmacyDrug.drug.privateDrug?.unitsPerBox,
+    );
+
+    if (!Number.isInteger(unitsPerBox) || unitsPerBox <= 0) {
+      throw new BadRequestException(
+        `Invalid unitsPerBox for pharmacy drug ${pharmacyDrugId}`,
+      );
+    }
+
+    return {
+      pharmacyDrugId: pharmacyDrug.pharmacyDrugId,
+      unitsPerBox,
+    };
   }
 }

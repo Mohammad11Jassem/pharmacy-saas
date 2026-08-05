@@ -1064,16 +1064,15 @@ export class SubscribePharmacyUseCase {
      *
      * ACTIVE
      */
-    const subscriptionStatus =
-      startsAt.getTime() > now.getTime()
-        ? PharmacySubscriptionStatus.SCHEDULED
-        : PharmacySubscriptionStatus.ACTIVE;
+    const subscriptionStatus = PharmacySubscriptionStatus.ACTIVE
+      // startsAt.getTime() > now.getTime()
+      //   ? PharmacySubscriptionStatus.SCHEDULED
+      //   : PharmacySubscriptionStatus.ACTIVE;
 
     // =========================================================
     // STEP 11
     // إنشاء الاشتراك
     // =========================================================
-
     const subscription = await tx.pharmacySubscription.create({
       data: {
         pharmacyId,
