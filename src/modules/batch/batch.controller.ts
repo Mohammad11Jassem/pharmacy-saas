@@ -20,10 +20,11 @@ import { Roles } from '../../iam/authorization/decorators/roles.decorator';
 import { AccountType } from '../../generated/prisma/enums';
 import { AddOpeningStockBatchesDto } from './dto/add-opening-stock-batches.dto';
 import { GetPharmacyDrugBatchesQueryDto } from './dto/get-pharmacy-drug-batches-query.dto';
+import { LogInvoiceActivity } from '../invoice-activity/decorators/log-invoice-activity.decorator';
 @Controller('batch')
 export class BatchController {
   constructor(private readonly batchService: BatchService) {}
-
+  @LogInvoiceActivity('تم إنشاء فاتورة شراء')
   @Post()
   create(@Body() createBatchDto: CreateSupplierInvoiceItemBatchDto) {
     return this.batchService.create(createBatchDto);

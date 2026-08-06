@@ -305,12 +305,12 @@ model Pharmacy {
   offerGrants   PharmacyOfferGrant[]
 
   // chat History
-  ragConversations RagConversation[]
+  ragConversations  RagConversation[]
   // ragRequests      RagRequest[]
   // ragDailyUsages   RagUsageDaily[]
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  invoiceActivities InvoiceActivity[]
+  createdAt         DateTime          @default(now()) @map("created_at")
+  updatedAt         DateTime          @updatedAt @map("updated_at")
 
   @@map("pharmacies")
 }
@@ -920,7 +920,7 @@ model SaleInvoiceItem {
 
   customerRequestItemId Int? @map("customer_request_item_id")
 
-  customerRequestItem CustomerRequestItem? @relation(fields: [customerRequestItemId],references: [customerRequestItemId],onDelete: SetNull)
+  customerRequestItem CustomerRequestItem? @relation(fields: [customerRequestItemId], references: [customerRequestItemId], onDelete: SetNull)
 
   unitType         UnitType @map("unit_type")
   baseQuantity     Int      @map("base_quantity")
@@ -1501,4 +1501,21 @@ model OutboxEvent {
   @@index([status, availableAt, createdAt], map: "idx_outbox_events_dispatch")
   @@index([status, lockedAt], map: "idx_outbox_events_locked")
   @@map("outbox_events")
+}
+
+model InvoiceActivity {
+  invoiceActivityId Int @id @default(autoincrement()) @map("invoice_activity_id")
+
+  /// The pharmacy that owns this activity.
+  pharmacyId Int      @map("pharmacy_id")
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [pharmacyId], onDelete: Cascade)
+
+  /// The text shown directly in the frontend.
+  message String @db.VarChar(255)
+
+  /// The exact date and time when the activity happened.
+  occurredAt DateTime @default(now()) @map("occurred_at") @db.Timestamptz(3)
+
+  @@index([pharmacyId, occurredAt])
+  @@map("invoice_activities")
 }

@@ -34,6 +34,8 @@ import { BullModule } from '@nestjs/bullmq';
 import { ScheduleModule } from '@nestjs/schedule';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
+import { DailyWindowModule } from './modules/daily-window/daily-window.module';
+import { InvoiceActivityModule } from './modules/invoice-activity/invoice-activity.module';
 
 @Module({
   imports: [
@@ -101,6 +103,8 @@ import { AppService } from './app.service';
       },
     }),
     ChattingModule,
+    DailyWindowModule,
+    InvoiceActivityModule,
   ],
   providers: [
     {

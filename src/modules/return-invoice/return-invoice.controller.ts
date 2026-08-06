@@ -17,12 +17,13 @@ import { AccountType } from '../../generated/prisma/enums';
 import { CurrentPharmacy } from '../../common/decorators/current-pharmacy.decorator';
 import { GetReturnInvoicesBySaleDto } from './dto/get-return-invoices-by-sale.dto';
 import { GetReturnInvoicesQueryDto } from './dto/get-return-invoices-query.dto';
+import { LogInvoiceActivity } from '../invoice-activity/decorators/log-invoice-activity.decorator';
 
 @Roles(AccountType.PHARMACY)
 @Controller('return-invoice')
 export class ReturnInvoiceController {
   constructor(private readonly returnInvoiceService: ReturnInvoiceService) {}
-
+  @LogInvoiceActivity('تم إنشاء فاتورة إرجاع')
   @Post('create')
   create(
     // @ActiveUser('sub') pharmacyId: number,

@@ -17,13 +17,16 @@ import { AccountType } from '../../generated/prisma/enums';
 import { ActiveUser } from '../../iam/decorators/active-user.decorator';
 import { CurrentPharmacy } from '../../common/decorators/current-pharmacy.decorator';
 import { GetSaleInvoicesDto } from './dto/get-sale-invoices.dto';
+import { LogInvoiceActivity } from '../invoice-activity/decorators/log-invoice-activity.decorator';
 
 @Roles(AccountType.PHARMACY)
 @Controller('sale-invoice')
 export class SaleInvoiceController {
   constructor(private readonly saleInvoiceService: SaleInvoiceService) {}
 
+  
   @Post('create')
+  @LogInvoiceActivity('تم إنشاء فاتورة بيع')
   create(
     // @ActiveUser('sub') pharmacyId: number,
     @CurrentPharmacy() pharmacyId: number,

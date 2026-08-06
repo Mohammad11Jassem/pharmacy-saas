@@ -18,13 +18,14 @@ import { CreateDamageInvoiceItemDto } from './dto/create-damage-invoice-item.dto
 import { UpdateDamageInvoiceItemDto } from './dto/update-damage-invoice-item.dto';
 import { CreateSingleDrugDamageInvoiceDto } from './dto/create-single-drug-damage-invoice.dto';
 import { ListDamageInvoicesDto } from './dto/list-damage-invoices.dto';
+import { LogInvoiceActivity } from '../invoice-activity/decorators/log-invoice-activity.decorator';
 
 @Auth(AuthType.Bearer)
 @Roles(AccountType.PHARMACY)
 @Controller('damage-invoices')
 export class DamageInvoiceController {
   constructor(private readonly damageInvoiceService: DamageInvoiceService) {}
-
+  @LogInvoiceActivity('تم إنشاء فاتورة إتلاف')
   @Post()
   async create(
     @ActiveUser('sub') pharmacyId: number,
