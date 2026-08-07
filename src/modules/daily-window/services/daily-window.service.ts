@@ -34,7 +34,7 @@ export class DailyWindowService {
     date: string,
   ) {
     const [
-      alerts,
+      nearExpiry,
       invoices,
       grossSales,
       grossProfit,
@@ -63,7 +63,7 @@ export class DailyWindowService {
       date,
 
       cards: {
-        alerts,
+        nearExpiry,
         invoices,
         grossSales,
         grossProfit,
