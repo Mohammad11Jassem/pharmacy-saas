@@ -152,6 +152,7 @@ import {
   seedPharmacyDrugBatches,
   seedPharmacyDrugCatalog,
 } from './seeds/master-data/drug-catalog.seed';
+import { seedAnalyticsHistory } from './seeds/analytics-history.seed';
 const prisma = createPrismaSeedClient();
 
 async function main() {
@@ -254,6 +255,12 @@ async function main() {
       status: demoPharmacy.pharmacy.status,
     },
   ]);
+
+  // ====================================================
+  // ANALYTICS
+  // ====================================================
+
+  await seedAnalyticsHistory(prisma);
 }
 
 main()

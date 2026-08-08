@@ -159,7 +159,8 @@ export class GetDailyGrossProfitUseCase {
     const grossProfit = netSalesRevenue.minus(netCostOfGoodsSold);
 
     /**
-     * salesRevenue
+     * 
+     salesRevenue
     مجموع مبالغ فواتير البيع في اليوم.
     
     returnAmount

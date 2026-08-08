@@ -1,1 +1,160 @@
+// ======================================================
+// DATE DIMENSION
+//
+// Stores one row for every calendar date.
+// Used for daily, weekly, monthly, and yearly reports.
+// ======================================================
 
+model DimDate {
+  /// Date key in YYYYMMDD format.
+  /// Example: 20260807
+  dateKey Int @id(map: "pk_dim_date") @map("date_key")
+
+  /// The real calendar date.
+  fullDate DateTime @unique(map: "uq_dim_date_full_date") @map("full_date") @db.Date
+
+  dayOfMonth  Int @map("day_of_month") @db.SmallInt
+  weekNumber  Int @map("week_number") @db.SmallInt
+  weekYear    Int @map("week_year") @db.SmallInt
+  monthNumber Int @map("month_number") @db.SmallInt
+  yearNumber  Int @map("year_number") @db.SmallInt
+
+  drugSalesDaily FactDrugSalesDaily[]
+  billsDaily     FactBillsDaily[]
+
+  /// Supports monthly and yearly reports.
+  @@index([yearNumber, monthNumber, fullDate], map: "idx_dim_date_year_month_date")
+
+  /// Supports weekly reports.
+  @@index([weekYear, weekNumber, fullDate], map: "idx_dim_date_week_date")
+
+  @@map("dim_date")
+}
+
+
+// ======================================================
+// PHARMACY DIMENSION
+//
+// Stores the pharmacy identity used in analytics.
+// ======================================================
+
+model DimPharmacy {
+  /// Internal key used by the analytics tables.
+  pharmacyKey Int @id(map: "pk_dim_pharmacy") @default(autoincrement()) @map("pharmacy_key")
+
+  /// Original Pharmacy ID from the transactional database.
+  pharmacyId Int @unique(map: "uq_dim_pharmacy_pharmacy_id") @map("pharmacy_id")
+
+  /// Pharmacy name copied during ETL.
+  pharmacyName String @map("pharmacy_name") @db.VarChar(255)
+
+  drugSalesDaily FactDrugSalesDaily[]
+  billsDaily     FactBillsDaily[]
+
+  @@map("dim_pharmacy")
+}
+
+
+// ======================================================
+// DAILY DRUG SALES FACT
+//
+// Grain:
+// One row per pharmacy + drug + date.
+// ======================================================
+
+model FactDrugSalesDaily {
+  /// Technical primary key for the fact row.
+  drugSalesDailyId Int @id(map: "pk_fact_drug_sales_daily") @default(autoincrement()) @map("drug_sales_daily_id")
+
+  /// Date dimension key.
+  dateKey Int @map("date_key")
+
+  /// Pharmacy dimension key.
+  pharmacyKey Int @map("pharmacy_key")
+
+  /// Original PharmacyDrug ID from the transactional database.
+  pharmacyDrugId Int @map("pharmacy_drug_id")
+
+  /// Total quantity sold in base units.
+  soldBaseQuantity Int @default(0) @map("sold_base_quantity")
+
+  /// Total sales amount for this drug before returns.
+  grossSalesAmount Decimal @default(0) @map("gross_sales_amount") @db.Decimal(18, 2)
+
+  /// Number of sale invoices containing this drug.
+  saleInvoiceCount Int @default(0) @map("sale_invoice_count")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  date     DimDate     @relation(fields: [dateKey], references: [dateKey], onDelete: Restrict, onUpdate: Cascade, map: "fk_fact_drug_sales_daily_date")
+  pharmacy DimPharmacy @relation(fields: [pharmacyKey], references: [pharmacyKey], onDelete: Restrict, onUpdate: Cascade, map: "fk_fact_drug_sales_daily_pharmacy")
+
+  /// The same pharmacy + drug + date cannot be inserted twice.
+  @@unique([dateKey, pharmacyKey, pharmacyDrugId], map: "uq_fact_drug_sales_daily_grain")
+
+  /// Used when reading all drug sales for a pharmacy in a date range.
+  @@index([pharmacyKey, dateKey], map: "idx_fact_drug_sales_daily_pharmacy_date")
+
+  /// Used when reading historical sales for one drug.
+  @@index([pharmacyKey, pharmacyDrugId, dateKey], map: "idx_fact_drug_sales_daily_pharmacy_drug_date")
+
+  @@map("fact_drug_sales_daily")
+}
+
+
+// ======================================================
+// DAILY BILLS FACT
+//
+// Grain:
+// One row per pharmacy + date.
+// ======================================================
+
+model FactBillsDaily {
+  /// Technical primary key for the fact row.
+  billsDailyId Int @id(map: "pk_fact_bills_daily") @default(autoincrement()) @map("bills_daily_id")
+
+  /// Date dimension key.
+  dateKey Int @map("date_key")
+
+  /// Pharmacy dimension key.
+  pharmacyKey Int @map("pharmacy_key")
+
+  /// Total sales before discounts and returns.
+  grossSalesAmount Decimal @default(0) @map("gross_sales_amount") @db.Decimal(18, 2)
+
+  /// Total discounts applied to sales.
+  discountAmount Decimal @default(0) @map("discount_amount") @db.Decimal(18, 2)
+
+  /// Total refunded amount from return invoices.
+  returnAmount Decimal @default(0) @map("return_amount") @db.Decimal(18, 2)
+
+  /// Gross sales minus discounts and returns.
+  netSalesAmount Decimal @default(0) @map("net_sales_amount") @db.Decimal(18, 2)
+
+  /// Number of sale invoices for this day.
+  saleInvoiceCount Int @default(0) @map("sale_invoice_count")
+
+  /// Number of return invoices for this day.
+  returnInvoiceCount Int @default(0) @map("return_invoice_count")
+
+  /// Number of damage invoices for this day.
+  damageInvoiceCount Int @default(0) @map("damage_invoice_count")
+
+  /// Number of supplier invoices for this day.
+  supplierInvoiceCount Int @default(0) @map("supplier_invoice_count")
+
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
+
+  date     DimDate      @relation(fields: [dateKey], references: [dateKey], onDelete: Restrict, onUpdate: Cascade, map: "fk_fact_bills_daily_date")
+  pharmacy DimPharmacy @relation(fields: [pharmacyKey], references: [pharmacyKey], onDelete: Restrict, onUpdate: Cascade, map: "fk_fact_bills_daily_pharmacy")
+
+  /// Only one aggregate row is allowed per pharmacy per day.
+  @@unique([dateKey, pharmacyKey], map: "uq_fact_bills_daily_grain")
+
+  /// Used by historical reports for a pharmacy and date range.
+  @@index([pharmacyKey, dateKey], map: "idx_fact_bills_daily_pharmacy_date")
+
+  @@map("fact_bills_daily")
+}

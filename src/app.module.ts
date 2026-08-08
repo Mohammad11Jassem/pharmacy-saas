@@ -36,6 +36,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { DailyWindowModule } from './modules/daily-window/daily-window.module';
 import { InvoiceActivityModule } from './modules/invoice-activity/invoice-activity.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -105,6 +106,7 @@ import { InvoiceActivityModule } from './modules/invoice-activity/invoice-activi
     ChattingModule,
     DailyWindowModule,
     InvoiceActivityModule,
+    AnalyticsModule,
   ],
   providers: [
     {
