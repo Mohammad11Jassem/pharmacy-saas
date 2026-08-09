@@ -18,6 +18,8 @@ import { ProcessChatAnswerUseCase } from '../use-cases/process-chat-answer.useca
 
 import { ChatRealtimePublisher } from '../services/chat-realtime-publisher.service.js';
 
+import { RagServiceClientError } from '../clients/rag-service-client.error.js';
+
 @Injectable()
 @Processor(CHAT_ANSWER_QUEUE, {
   concurrency: 2,
@@ -77,7 +79,8 @@ export class ChatAnswerProcessor extends WorkerHost {
 
         processedAt: new Date().toISOString(),
 
-        mode: 'MOCK',
+        // mode: 'MOCK',
+        mode: 'RAG_SERVICE',
 
         outcome: result.outcome,
 
@@ -140,12 +143,56 @@ export class ChatAnswerProcessor extends WorkerHost {
     }
   }
 
+  // private resolveFailureCode(error: unknown): string {
+  //   if (
+  //     error instanceof Error &&
+  //     error.message.startsWith('INVALID_RAG_RESPONSE:')
+  //   ) {
+  //     return 'INVALID_RAG_RESPONSE';
+  //   }
+
+  //   return 'RAG_PROCESSING_FAILED';
+  // }
+
+  // private resolveFailureCode(error: unknown): string {
+  //   if (error instanceof RagServiceClientError) {
+  //     return error.code;
+  //   }
+
+  //   if (
+  //     error instanceof Error &&
+  //     error.message.startsWith('INVALID_RAG_RESPONSE:')
+  //   ) {
+  //     return 'INVALID_RAG_RESPONSE';
+  //   }
+
+  //   return 'RAG_PROCESSING_FAILED';
+  // }
+
   private resolveFailureCode(error: unknown): string {
-    if (
-      error instanceof Error &&
-      error.message.startsWith('INVALID_RAG_RESPONSE:')
-    ) {
+    const message = error instanceof Error ? error.message : String(error);
+
+    if (message.startsWith('INVALID_RAG_RESPONSE:')) {
       return 'INVALID_RAG_RESPONSE';
+    }
+
+    if (message.startsWith('RAG_SERVICE_TIMEOUT:')) {
+      return 'RAG_SERVICE_TIMEOUT';
+    }
+
+    if (
+      message.startsWith('RAG_SERVICE_HTTP_401:') ||
+      message.startsWith('RAG_SERVICE_HTTP_403:')
+    ) {
+      return 'RAG_SERVICE_UNAUTHORIZED';
+    }
+
+    if (message.startsWith('RAG_SERVICE_HTTP_4')) {
+      return 'RAG_SERVICE_BAD_REQUEST';
+    }
+
+    if (message.startsWith('RAG_SERVICE_HTTP_5')) {
+      return 'RAG_SERVICE_UNAVAILABLE';
     }
 
     return 'RAG_PROCESSING_FAILED';

@@ -44,7 +44,7 @@ socket.on('connect', async () => {
         body: JSON.stringify({
           clientRequestId: randomUUID(),
 
-          content: 'ما هي مخاطر استخدام Ibuprofen مع Warfarin؟',
+          content: 'ما هي استخدامات وموانع استعمال دواء DOMPERON؟',
         }),
       },
     );
