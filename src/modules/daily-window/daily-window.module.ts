@@ -12,21 +12,18 @@ import { GetDailyGrossProfitUseCase } from './use-cases/get-daily-gross-profit.u
 import { GetDailyGrossSalesUseCase } from './use-cases/get-daily-gross-sales.use-case';
 import { GetDailyInvoiceCountUseCase } from './use-cases/get-daily-invoice-count.use-case';
 import { GetIncomingAlertsUseCase } from './use-cases/get-incoming-alerts.use-case';
+import { EnsureOwnerPharmacyAccessUseCase } from '../../common/use-cases/ensure-owner-pharmacy-access.use-case';
 // import { GetInvoiceActivitiesUseCase } from './use-cases/get-invoice-activities.use-case';
 
 @Module({
-  imports: [
-    PrismaModule,
-  ],
+  imports: [PrismaModule],
 
-  controllers: [
-    DailyWindowController,
-  ],
+  controllers: [DailyWindowController],
 
   providers: [
     DailyWindowService,
+    EnsureOwnerPharmacyAccessUseCase,
     CurrentInventoryAlertsService,
-
     GetDailyAlertCountUseCase,
     GetDailyInvoiceCountUseCase,
     GetDailyGrossSalesUseCase,

@@ -1,14 +1,15 @@
 import { Type } from 'class-transformer';
 
-import {
-  IsInt,
-  Max,
-  Min,
-} from 'class-validator';
+import { IsInt, Max, Min } from 'class-validator';
 
 import { DailyDateQueryDto } from './daily-date-query.dto';
 
 export class DailyAlertsQueryDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  pharmacy_id: number;
+
   @Type(() => Number)
   @IsInt()
   @Min(1)

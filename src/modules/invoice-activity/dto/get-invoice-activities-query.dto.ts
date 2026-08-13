@@ -3,6 +3,10 @@ import { Type } from 'class-transformer';
 import { IsDateString, IsInt, Max, Min } from 'class-validator';
 
 export class GetInvoiceActivitiesQueryDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  pharmacy_id: number;
   /**
    * Example: 2026-08-07
    */

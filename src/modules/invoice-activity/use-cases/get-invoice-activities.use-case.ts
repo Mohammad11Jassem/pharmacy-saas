@@ -5,12 +5,23 @@ import { Prisma } from '../../../generated/prisma/client';
 import { PrismaService } from '../../../prisma/prisma.service';
 
 import { getActivityDateRange } from '../utils/activity-date-range.util';
+import { EnsureOwnerPharmacyAccessUseCase } from '../../../common/use-cases/ensure-owner-pharmacy-access.use-case';
 
 @Injectable()
 export class GetInvoiceActivitiesUseCase {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly ensureOwnerPharmacyAccess: EnsureOwnerPharmacyAccessUseCase,
+  ) {}
 
-  async execute(pharmacyId: number, date: string, page: number, limit: number) {
+  async execute(
+    ownerUserId: number,
+    pharmacyId: number,
+    date: string,
+    page: number,
+    limit: number,
+  ) {
+    await this.ensureOwnerPharmacyAccess.execute(ownerUserId, pharmacyId);
     const { startAt, endAt } = getActivityDateRange(date);
 
     const skip = (page - 1) * limit;

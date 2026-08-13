@@ -1,8 +1,4 @@
-import {
-  Controller,
-  Get,
-  Query,
-} from '@nestjs/common';
+import { Controller, Get, Query } from '@nestjs/common';
 
 import { ResponseMessage } from '../../../common/decorators/response-message.decorator';
 
@@ -25,28 +21,23 @@ import {
 import { DailyWindowService } from '../services/daily-window.service';
 
 @Auth(AuthType.Bearer)
-@Roles(AccountType.PHARMACY)
+@Roles(AccountType.PHARMACY_OWNER)
 @Controller('daily-window')
 export class DailyWindowController {
-  constructor(
-    private readonly dailyWindowService:
-      DailyWindowService,
-  ) {}
+  constructor(private readonly dailyWindowService: DailyWindowService) {}
 
- 
   @Get('cards')
-  @ResponseMessage(
-    'Daily cards retrieved successfully.',
-  )
+  @ResponseMessage('Daily cards retrieved successfully.')
   getCards(
     @ActiveUser('sub')
-    pharmacyId: number,
+    ownerUserId: number,
 
     @Query()
     query: DailyDateQueryDto,
   ) {
     return this.dailyWindowService.getCards(
-      pharmacyId,
+      ownerUserId,
+      query.pharmacy_id,
       query.date,
     );
   }
@@ -55,18 +46,17 @@ export class DailyWindowController {
    * Return current stock and expiry alerts.
    */
   @Get('alerts')
-  @ResponseMessage(
-    'Incoming alerts retrieved successfully.',
-  )
+  @ResponseMessage('Incoming alerts retrieved successfully.')
   getAlerts(
     @ActiveUser('sub')
-    pharmacyId: number,
+    ownerUserId: number,
 
     @Query()
     query: DailyAlertsQueryDto,
   ) {
     return this.dailyWindowService.getAlerts(
-      pharmacyId,
+      ownerUserId,
+      query.pharmacy_id,
       query.page,
       query.limit,
     );
@@ -75,22 +65,23 @@ export class DailyWindowController {
   /**
    * Return invoice creation activities.
    */
-//   @Get('activities')
-//   @ResponseMessage(
-//     'Invoice activities retrieved successfully.',
-//   )
-//   getActivities(
-//     @ActiveUser('sub')
-//     pharmacyId: number,
-
-//     @Query()
-//     query: DailyActivitiesQueryDto,
-//   ) {
-//     return this.dailyWindowService.getActivities(
-//       pharmacyId,
-//       query.date,
-//       query.page,
-//       query.limit,
-//     );
-//   }
+  // @Get('activities')
+  // @ResponseMessage(
+  //   'Invoice activities retrieved successfully.',
+  // )
+  // getActivities(
+  //   @ActiveUser('sub')
+  //   ownerUserId: number,
+  
+  //   @Query()
+  //   query: DailyActivitiesQueryDto,
+  // ) {
+  //   return this.dailyWindowService.getActivities(
+  //     ownerUserId,
+  //     query.pharmacy_id,
+  //     query.date,
+  //     query.page,
+  //     query.limit,
+  //   );
+  // }
 }

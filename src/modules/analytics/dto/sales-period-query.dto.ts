@@ -1,8 +1,15 @@
-import { IsDateString, IsEnum } from 'class-validator';
+import { Type } from 'class-transformer';
+
+import { IsDateString, IsEnum, IsInt, Min } from 'class-validator';
 
 import { AnalyticsLevel } from '../enums/analytics-level.enum';
 
 export class SalesPeriodQueryDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  pharmacy_id: number;
+
   /**
    * Reference date selected by the frontend.
    *

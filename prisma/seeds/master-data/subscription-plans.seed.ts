@@ -35,7 +35,7 @@ const subscriptionPlans: SubscriptionPlanSeed[] = [
 
     planPrice: '1500000.00',
 
-    currency: 'SP',
+    currency: 'USD',
 
     type: SubscriptionPlanType.STARTER,
     ragEnabled: false,
@@ -63,7 +63,7 @@ const subscriptionPlans: SubscriptionPlanSeed[] = [
 
     planPrice: '3000000.00',
 
-    currency: 'SP',
+    currency: 'USD',
 
     type: SubscriptionPlanType.PROFESSIONAL,
     ragEnabled: true,
@@ -91,7 +91,7 @@ const subscriptionPlans: SubscriptionPlanSeed[] = [
 
     planPrice: '5000000.00',
 
-    currency: 'SP',
+    currency: 'USD',
 
     type: SubscriptionPlanType.ENTERPRISE,
     ragEnabled: true,

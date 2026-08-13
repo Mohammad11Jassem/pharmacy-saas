@@ -15,13 +15,14 @@ import { GetDrugPerformanceUseCase } from './use-cases/get-drug-performance.use-
 import { GetSalesTrendUseCase } from './use-cases/get-sales-trend.use-case';
 import { GetSalesSummaryUseCase } from './use-cases/get-sales-summary.use-case';
 import { GetStagnantDrugsUseCase } from './use-cases/get-stagnant-drugs.use-case';
+import { EnsureOwnerPharmacyAccessUseCase } from '../../common/use-cases/ensure-owner-pharmacy-access.use-case';
 
 @Module({
   controllers: [HistoricalAnalyticsController],
 
   providers: [
     HistoricalAnalyticsService,
-
+    EnsureOwnerPharmacyAccessUseCase,
     ResolveAnalyticsPharmacyUseCase,
 
     GetInvoiceActivityUseCase,

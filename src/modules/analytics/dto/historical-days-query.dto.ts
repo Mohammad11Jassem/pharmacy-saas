@@ -1,7 +1,13 @@
 import { Type } from 'class-transformer';
+
 import { IsInt, Max, Min } from 'class-validator';
 
 export class HistoricalDaysQueryDto {
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  pharmacy_id: number;
+
   /**
    * Number of calendar days to analyze.
    *

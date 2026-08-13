@@ -6,32 +6,20 @@
 
 // @Injectable()
 // export class GetInvoiceActivitiesUseCase {
-//   constructor(
-//     private readonly prisma: PrismaService,
-//   ) {}
+//   constructor(private readonly prisma: PrismaService) {}
 
-//   async execute(
-//     pharmacyId: number,
-//     date: string,
-//     page: number,
-//     limit: number,
-//   ) {
-//     const activityDate =
-//       parseDateOnly(date);
+//   async execute(pharmacyId: number, date: string, page: number, limit: number) {
+//     const activityDate = parseDateOnly(date);
 
-//     const skip =
-//       (page - 1) * limit;
+//     const skip = (page - 1) * limit;
 
 //     const where = {
 //       pharmacyId,
 //       activityDate,
 //     };
 
-//     const [
-//       activities,
-//       totalItems,
-//     ] = await this.prisma.$transaction([
-//       this.prisma.invoiceActivityLog.findMany({
+//     const [activities, totalItems] = await this.prisma.$transaction([
+//       this.prisma.invoiceActivity.findMany({
 //         where,
 
 //         skip,
@@ -42,7 +30,7 @@
 //         },
 
 //         select: {
-//           invoiceActivityLogId: true,
+//           invoiceActivityId: true,
 //           activityType: true,
 //           referenceId: true,
 //           message: true,
@@ -51,7 +39,7 @@
 //         },
 //       }),
 
-//       this.prisma.invoiceActivityLog.count({
+//       this.prisma.invoiceActivity.count({
 //         where,
 //       }),
 //     ]);
@@ -64,8 +52,7 @@
 //         limit,
 //         totalItems,
 
-//         totalPages:
-//           Math.ceil(totalItems / limit),
+//         totalPages: Math.ceil(totalItems / limit),
 //       },
 //     };
 //   }

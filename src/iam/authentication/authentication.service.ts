@@ -78,7 +78,7 @@ export class AuthenticationService {
   }
 
   async signInUser(signInDto: SingInDto) {
-   const user = await this.prisma.userAccount.findUnique({
+    const user = await this.prisma.userAccount.findUnique({
       where: {
         email: signInDto.email,
         // phone: signInDto.phone,
@@ -90,25 +90,35 @@ export class AuthenticationService {
         passwordHash: true,
         accountType: true,
         status: true,
+        pharmacyOwner: {
+          select: {
+            pharmacies: {
+              select: {
+                pharmacyId: true,
+                pharmacyName: true,
+              },
+            },
+          },
+        },
       },
     });
-     if (!user) {
-        throw new UnauthorizedException('بيانات الاعتماد غير صحيحة');
-      }
-      if (!user.passwordHash) {
-        throw new UnauthorizedException('الحساب غير مفعل بعد');
-      }
-     if (user.status !== UserAccountStatus.ACTIVE) {
-        throw new ConflictException('الحساب غير نشط بعد');
-      }
-      const isPasswordValid = await this.hashingService.compare(
-        signInDto.password,
-        user.passwordHash,
-      );
-      if (!isPasswordValid) {
-        throw new UnauthorizedException('بيانات الاعتماد غير صحيحة');
-      }
-    
+    if (!user) {
+      throw new UnauthorizedException('بيانات الاعتماد غير صحيحة');
+    }
+    if (!user.passwordHash) {
+      throw new UnauthorizedException('الحساب غير مفعل بعد');
+    }
+    if (user.status !== UserAccountStatus.ACTIVE) {
+      throw new ConflictException('الحساب غير نشط بعد');
+    }
+    const isPasswordValid = await this.hashingService.compare(
+      signInDto.password,
+      user.passwordHash,
+    );
+    if (!isPasswordValid) {
+      throw new UnauthorizedException('بيانات الاعتماد غير صحيحة');
+    }
+
     const tokens = await this.generateTokens({
       userId: user.userId,
       email: user.email,
@@ -124,6 +134,9 @@ export class AuthenticationService {
       //   status: user.status,
       // },
       accountType: user.accountType,
+      ...(user.accountType === AccountType.PHARMACY_OWNER && {
+        pharmacies: user.pharmacyOwner?.pharmacies ?? [],
+      }),
       tokens,
     };
   }
@@ -156,7 +169,6 @@ export class AuthenticationService {
     //   throw new UnauthorizedException('Invalid role selected');
     // }
     // return await this.generateTokens(user);
-
   }
   // async signInUser(signInDto: SingInDto) {
   //   // const user = await this.userRepository.findOne({

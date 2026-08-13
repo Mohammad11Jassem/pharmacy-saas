@@ -16,7 +16,7 @@ import { GetInvoiceActivitiesQueryDto } from '../dto/get-invoice-activities-quer
 import { GetInvoiceActivitiesUseCase } from '../use-cases/get-invoice-activities.use-case';
 
 @Auth(AuthType.Bearer)
-@Roles(AccountType.PHARMACY)
+@Roles(AccountType.PHARMACY_OWNER)
 @Controller('daily-window/activities')
 export class InvoiceActivityController {
   constructor(private readonly getActivities: GetInvoiceActivitiesUseCase) {}
@@ -28,13 +28,15 @@ export class InvoiceActivityController {
   @ResponseMessage('Invoice activities retrieved successfully.')
   findAll(
     @ActiveUser('sub')
-    pharmacyId: number,
+    ownerUserId: number,
+  
 
     @Query()
     query: GetInvoiceActivitiesQueryDto,
   ) {
     return this.getActivities.execute(
-      pharmacyId,
+      ownerUserId,
+      query.pharmacy_id,
       query.date,
       query.page,
       query.limit,

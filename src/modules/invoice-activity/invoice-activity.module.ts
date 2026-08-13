@@ -11,6 +11,7 @@ import { InvoiceActivityInterceptor } from './interceptors/invoice-activity.inte
 import { InvoiceActivityService } from './services/invoice-activity.service';
 
 import { GetInvoiceActivitiesUseCase } from './use-cases/get-invoice-activities.use-case';
+import { EnsureOwnerPharmacyAccessUseCase } from '../../common/use-cases/ensure-owner-pharmacy-access.use-case';
 
 @Module({
   imports: [PrismaModule],
@@ -19,6 +20,7 @@ import { GetInvoiceActivitiesUseCase } from './use-cases/get-invoice-activities.
 
   providers: [
     InvoiceActivityService,
+    EnsureOwnerPharmacyAccessUseCase,
     GetInvoiceActivitiesUseCase,
 
     {
