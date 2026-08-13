@@ -27,6 +27,7 @@ import { ListChatConversationsUseCase } from './use-cases/list-chat-conversation
 import { ListChatMessagesUseCase } from './use-cases/list-chat-messages.usecase';
 import { GetChatRequestStatusUseCase } from './use-cases/get-chat-request-status.usecase';
 import { ChatRequestController } from './controllers/chat-request.controller';
+import { HttpRagServiceClient } from './clients/http-rag-service.client';
 
 @Module({
   imports: [
@@ -58,7 +59,7 @@ import { ChatRequestController } from './controllers/chat-request.controller';
       },
     }),
   ],
-  controllers: [ChattingController ,ChatRequestController],
+  controllers: [ChattingController, ChatRequestController],
 
   providers: [
     ChattingService,
@@ -81,9 +82,13 @@ import { ChatRequestController } from './controllers/chat-request.controller';
 
     ProcessChatAnswerUseCase,
 
+    // {
+    //   provide: RagServiceClient,
+    //   useClass: MockRagServiceClient,
+    // },
     {
       provide: RagServiceClient,
-      useClass: MockRagServiceClient,
+      useClass: HttpRagServiceClient,
     },
 
     ChatSocketAuthService,

@@ -233,6 +233,14 @@ enum OutboxEventStatus {
   @@map("outbox_event_status")
 }
 
+enum SubscriptionPaymentStatus {
+  PENDING
+  PROCESSING
+  SUCCEEDED
+  FAILED
+  EXPIRED
+}
+
 // ─── USER ACCOUNT ─────────────────────────────────────────────────────────────
 
 model UserAccount {
@@ -301,8 +309,10 @@ model Pharmacy {
   pharmacyInvoices PharmacyInvoice[]
   patients         Patient[]
 
-  subscriptions PharmacySubscription[]
-  offerGrants   PharmacyOfferGrant[]
+  subscriptions        PharmacySubscription[]
+  offerGrants          PharmacyOfferGrant[]
+  //payment stripe
+  subscriptionPayments SubscriptionPayment[]
 
   // chat History
   ragConversations  RagConversation[]
@@ -1094,8 +1104,10 @@ model SubscriptionPlan {
   ragMaxCompletedTurnsPerConversation Int?    @map("rag_max_completed_turns_per_conversation")
   ragMonthlyRequestLimit              Int?    @map("rag_monthly_request_limit")
 
-  offers        PlanOffer[]
-  subscriptions PharmacySubscription[]
+  offers               PlanOffer[]
+  subscriptions        PharmacySubscription[]
+  //payment stripe
+  subscriptionPayments SubscriptionPayment[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1126,8 +1138,10 @@ model PlanOffer {
   startsAt DateTime @map("starts_at")
   endsAt   DateTime @map("ends_at")
 
-  grants        PharmacyOfferGrant[]
-  appliedOffers SubscriptionAppliedOffer[]
+  grants               PharmacyOfferGrant[]
+  appliedOffers        SubscriptionAppliedOffer[]
+  //payment stripe
+  subscriptionPayments SubscriptionPayment[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1159,8 +1173,9 @@ model PharmacyOfferGrant {
 
   // appliedOffer SubscriptionAppliedOffer?
 
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
+  createdAt           DateTime             @default(now()) @map("created_at")
+  updatedAt           DateTime             @updatedAt @map("updated_at")
+  subscriptionPayment SubscriptionPayment?
 
   @@unique([pharmacyId, offerId])
   @@index([pharmacyId, validFrom, validUntil])
@@ -1191,6 +1206,9 @@ model PharmacySubscription {
   currency String @default("SP")
 
   appliedOffer SubscriptionAppliedOffer?
+
+  //payment stripe
+  payment SubscriptionPayment?
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1232,6 +1250,114 @@ model SubscriptionAppliedOffer {
 
   @@index([offerId])
   @@map("subscription_applied_offers")
+}
+
+// ─── SUBSCRIPTION PAYMENT ─────────────────────────────────────────────────────
+
+model SubscriptionPayment {
+  subscriptionPaymentId Int @id @default(autoincrement()) @map("subscription_payment_id")
+
+  /**
+   * The pharmacy that started the purchase.
+   * We store pharmacyId here because the payment exists
+   * before PharmacySubscription is created.
+   */
+  pharmacyId Int      @map("pharmacy_id")
+  pharmacy   Pharmacy @relation(fields: [pharmacyId], references: [pharmacyId], onDelete: Restrict)
+
+  /**
+   * The subscription plan selected by the pharmacy.
+   * This is the purchase intent before the actual
+   * PharmacySubscription exists.
+   */
+  planId Int              @map("plan_id")
+  plan   SubscriptionPlan @relation(fields: [planId], references: [planId], onDelete: Restrict)
+
+  /**
+   * Optional offer selected for this purchase.
+   * If null, the pharmacy is purchasing the plan
+   * without an offer.
+   */
+  offerId Int?       @map("offer_id")
+  offer   PlanOffer? @relation(fields: [offerId], references: [offerId], onDelete: Restrict)
+
+  pharmacyOfferGrantId Int?                @unique @map("pharmacy_offer_grant_id")
+  pharmacyOfferGrant   PharmacyOfferGrant? @relation(fields: [pharmacyOfferGrantId], references: [pharmacyOfferGrantId], onDelete: Restrict)
+
+  /**
+   * This relation is null while payment is pending.
+   * It is filled only after Stripe confirms successful
+   * payment and MediXa creates PharmacySubscription.
+   */
+  pharmacySubscriptionId Int?                  @unique @map("pharmacy_subscription_id")
+  pharmacySubscription   PharmacySubscription? @relation(fields: [pharmacySubscriptionId], references: [pharmacySubscriptionId], onDelete: SetNull)
+
+  status SubscriptionPaymentStatus @default(PENDING)
+
+  /**
+   * Financial snapshot at checkout creation time.
+   * These values must not depend later on the current
+   * plan or offer price because they may change.
+   */
+
+  // baseAmount Decimal @map("base_amount") @db.Decimal(12, 2)
+
+  // discountAmount Decimal @default(0) @map("discount_amount") @db.Decimal(12, 2)
+
+  amount Decimal @db.Decimal(12, 2)
+
+  currency String @db.VarChar(10)
+
+  /**
+   * Snapshot of the plan duration at purchase time.
+   * If the administrator changes the plan duration while
+   * the customer is paying, the successful payment should
+   * still receive the duration that was originally purchased.
+   */
+  durationMonths Int @map("duration_months")
+
+  /**
+   * Sent by the frontend to prevent duplicate checkout requests.
+   */
+  idempotencyKey String @unique @map("idempotency_key") @db.VarChar(255)
+
+  /**
+   * Stripe identifiers.
+   */
+  stripeCheckoutSessionId String? @unique @map("stripe_checkout_session_id") @db.VarChar(255)
+
+  // stripePaymentIntentId String? @unique @map("stripe_payment_intent_id") @db.VarChar(255)
+
+  /**
+   * Hosted Stripe Checkout URL.
+   */
+
+  // checkoutUrl String? @map("checkout_url") @db.Text
+
+  /**
+   * Stripe Checkout expiration time.
+   */
+  // expiresAt DateTime? @map("expires_at")
+
+  /**
+   * The moment Stripe confirmed successful payment.
+   */
+  paidAt DateTime? @map("paid_at")
+
+  /**
+   * Useful for storing a readable payment failure reason.
+   */
+  // failureReason String? @map("failure_reason") @db.Text
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([pharmacyId, status])
+  @@index([planId])
+  @@index([offerId])
+  @@index([createdAt])
+  @@map("subscription_payments")
 }
 
 // ─── CHAT HISTORY ───────────────────────────────────────────────

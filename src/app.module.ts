@@ -37,7 +37,7 @@ import { AppService } from './app.service';
 import { DailyWindowModule } from './modules/daily-window/daily-window.module';
 import { InvoiceActivityModule } from './modules/invoice-activity/invoice-activity.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
-
+import { SubscriptionPaymentModule } from './modules/subscription-payment/subscription-payment.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -70,6 +70,7 @@ import { AnalyticsModule } from './modules/analytics/analytics.module';
     ReturnInvoiceItemModule,
     DamageInvoiceModule,
     SubscriptionModule,
+    SubscriptionPaymentModule,
     ScheduleModule.forRoot(),
     BullModule.forRootAsync({
       imports: [ConfigModule],

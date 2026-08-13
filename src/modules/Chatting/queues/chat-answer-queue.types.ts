@@ -11,7 +11,8 @@ export type GenerateChatAnswerJobResult = {
 
   processedAt: string;
 
-  mode: 'MOCK';
+  // mode: 'MOCK';
+  mode: 'RAG_SERVICE';
 
   outcome: 'SUCCEEDED' | 'SKIPPED';
 
