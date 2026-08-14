@@ -38,7 +38,7 @@ export class GeneralDrugsController {
     // @Query('isRx') isRx?: string,
     // @Query('dosageFormId', new ParseIntPipe({ optional: true }))
     // dosageFormId?: number,
-    // @Query('searchTerm') searchTerm?: string,
+    @Query('searchTerm') searchTerm?: string,
   ) {
     return this.generalDrugsService.findAll({
       page: parseInt(page || '1', 10),
@@ -46,7 +46,7 @@ export class GeneralDrugsController {
       // isActive: isActive ? isActive === 'true' : undefined,
       // isRx: isRx ? isRx === 'true' : undefined,
       // dosageFormId,
-      // searchTerm,
+      searchTerm,
     });
   }
 

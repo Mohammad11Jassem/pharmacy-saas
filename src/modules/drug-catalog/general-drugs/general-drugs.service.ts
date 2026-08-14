@@ -95,9 +95,9 @@ export class GeneralDrugsService {
     // isActive?: boolean;
     // isRx?: boolean;
     // dosageFormId?: number;
-    // searchTerm?: string; // search by tradeName or barcode
+    searchTerm?: string; // search by tradeName or barcode
   }){
-    const { page, limit, 
+    const { page, limit, searchTerm
       // isActive, isRx, dosageFormId, searchTerm 
     } = options;
     const skip = (page - 1) * limit;
@@ -117,12 +117,12 @@ export class GeneralDrugsService {
     //   where.dosageFormId = dosageFormId;
     // }
 
-    // if (searchTerm) {
-    //   where.OR = [
-    //     { tradeName: { contains: searchTerm, mode: 'insensitive' } },
-    //     { barcode: { contains: searchTerm, mode: 'insensitive' } },
-    //   ];
-    // }
+    if (searchTerm) {
+      where.OR = [
+        { tradeName: { contains: searchTerm, mode: 'insensitive' } },
+        { barcode: { contains: searchTerm, mode: 'insensitive' } },
+      ];
+    }
 
     // Execute queries in parallel
     const [drugs, total] = await Promise.all([
