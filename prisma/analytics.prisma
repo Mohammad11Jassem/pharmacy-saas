@@ -24,13 +24,10 @@ model DimDate {
 
   /// Supports monthly and yearly reports.
   @@index([yearNumber, monthNumber, fullDate], map: "idx_dim_date_year_month_date")
-
   /// Supports weekly reports.
   @@index([weekYear, weekNumber, fullDate], map: "idx_dim_date_week_date")
-
   @@map("dim_date")
 }
-
 
 // ======================================================
 // PHARMACY DIMENSION
@@ -53,7 +50,6 @@ model DimPharmacy {
 
   @@map("dim_pharmacy")
 }
-
 
 // ======================================================
 // DAILY DRUG SALES FACT
@@ -92,16 +88,12 @@ model FactDrugSalesDaily {
 
   /// The same pharmacy + drug + date cannot be inserted twice.
   @@unique([dateKey, pharmacyKey, pharmacyDrugId], map: "uq_fact_drug_sales_daily_grain")
-
   /// Used when reading all drug sales for a pharmacy in a date range.
   @@index([pharmacyKey, dateKey], map: "idx_fact_drug_sales_daily_pharmacy_date")
-
   /// Used when reading historical sales for one drug.
   @@index([pharmacyKey, pharmacyDrugId, dateKey], map: "idx_fact_drug_sales_daily_pharmacy_drug_date")
-
   @@map("fact_drug_sales_daily")
 }
-
 
 // ======================================================
 // DAILY BILLS FACT
@@ -147,14 +139,12 @@ model FactBillsDaily {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(3)
   updatedAt DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(3)
 
-  date     DimDate      @relation(fields: [dateKey], references: [dateKey], onDelete: Restrict, onUpdate: Cascade, map: "fk_fact_bills_daily_date")
+  date     DimDate     @relation(fields: [dateKey], references: [dateKey], onDelete: Restrict, onUpdate: Cascade, map: "fk_fact_bills_daily_date")
   pharmacy DimPharmacy @relation(fields: [pharmacyKey], references: [pharmacyKey], onDelete: Restrict, onUpdate: Cascade, map: "fk_fact_bills_daily_pharmacy")
 
   /// Only one aggregate row is allowed per pharmacy per day.
   @@unique([dateKey, pharmacyKey], map: "uq_fact_bills_daily_grain")
-
   /// Used by historical reports for a pharmacy and date range.
   @@index([pharmacyKey, dateKey], map: "idx_fact_bills_daily_pharmacy_date")
-
   @@map("fact_bills_daily")
 }

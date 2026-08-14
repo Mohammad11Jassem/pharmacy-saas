@@ -319,9 +319,14 @@ model Pharmacy {
   // ragRequests      RagRequest[]
   // ragDailyUsages   RagUsageDaily[]
   invoiceActivities InvoiceActivity[]
-  createdAt         DateTime          @default(now()) @map("created_at")
-  updatedAt         DateTime          @updatedAt @map("updated_at")
 
+  lastAppliedGeneralDrugPriceListId Int?                  @map("last_applied_general_drug_price_list_id")
+  lastAppliedGeneralDrugPriceList   GeneralDrugPriceList? @relation("LastAppliedGeneralDrugPriceList", fields: [lastAppliedGeneralDrugPriceListId], references: [generalDrugPriceListId], onDelete: SetNull)
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@index([lastAppliedGeneralDrugPriceListId])
   @@map("pharmacies")
 }
 
@@ -537,8 +542,9 @@ model GeneralDrug {
   isRx          Boolean @default(false) @map("is_rx")
   isActive      Boolean @default(true) @map("is_active")
 
-  ingredients DrugIngredient[]
-  categories  DrugCategoryAssignment[]
+  ingredients    DrugIngredient[]
+  categories     DrugCategoryAssignment[]
+  priceListItems GeneralDrugPriceListItem[]
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
@@ -1644,4 +1650,40 @@ model InvoiceActivity {
 
   @@index([pharmacyId, occurredAt])
   @@map("invoice_activities")
+}
+
+model GeneralDrugPriceList {
+  generalDrugPriceListId Int @id @default(autoincrement()) @map("general_drug_price_list_id")
+
+  version Int @unique
+
+  publishedAt DateTime @default(now()) @map("published_at")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  items GeneralDrugPriceListItem[]
+
+  pharmaciesLastApplied Pharmacy[] @relation("LastAppliedGeneralDrugPriceList")
+
+  @@index([publishedAt])
+  @@map("general_drug_price_lists")
+}
+
+model GeneralDrugPriceListItem {
+  generalDrugPriceListItemId Int @id @default(autoincrement()) @map("general_drug_price_list_item_id")
+
+  generalDrugPriceListId Int @map("general_drug_price_list_id")
+  generalDrugId          Int @map("general_drug_id")
+
+  netPrice      Decimal? @map("net_price") @db.Decimal(12, 2)
+  consumerPrice Decimal? @map("consumer_price") @db.Decimal(12, 2)
+
+  priceList GeneralDrugPriceList @relation(fields: [generalDrugPriceListId], references: [generalDrugPriceListId], onDelete: Cascade)
+
+  generalDrug GeneralDrug @relation(fields: [generalDrugId], references: [generalDrugId], onDelete: Cascade)
+
+  @@unique([generalDrugPriceListId, generalDrugId])
+  @@index([generalDrugId])
+  @@map("general_drug_price_list_items")
 }

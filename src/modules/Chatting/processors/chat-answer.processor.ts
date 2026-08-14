@@ -17,9 +17,6 @@ import {
 import { ProcessChatAnswerUseCase } from '../use-cases/process-chat-answer.usecase.js';
 
 import { ChatRealtimePublisher } from '../services/chat-realtime-publisher.service.js';
-
-import { RagServiceClientError } from '../clients/rag-service-client.error.js';
-
 @Injectable()
 @Processor(CHAT_ANSWER_QUEUE, {
   concurrency: 2,
@@ -142,32 +139,6 @@ export class ChatAnswerProcessor extends WorkerHost {
       throw error;
     }
   }
-
-  // private resolveFailureCode(error: unknown): string {
-  //   if (
-  //     error instanceof Error &&
-  //     error.message.startsWith('INVALID_RAG_RESPONSE:')
-  //   ) {
-  //     return 'INVALID_RAG_RESPONSE';
-  //   }
-
-  //   return 'RAG_PROCESSING_FAILED';
-  // }
-
-  // private resolveFailureCode(error: unknown): string {
-  //   if (error instanceof RagServiceClientError) {
-  //     return error.code;
-  //   }
-
-  //   if (
-  //     error instanceof Error &&
-  //     error.message.startsWith('INVALID_RAG_RESPONSE:')
-  //   ) {
-  //     return 'INVALID_RAG_RESPONSE';
-  //   }
-
-  //   return 'RAG_PROCESSING_FAILED';
-  // }
 
   private resolveFailureCode(error: unknown): string {
     const message = error instanceof Error ? error.message : String(error);

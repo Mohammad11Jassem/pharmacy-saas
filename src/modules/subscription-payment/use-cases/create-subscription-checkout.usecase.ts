@@ -38,9 +38,39 @@ export class CreateSubscriptionCheckoutUseCase {
     private readonly configService: ConfigService,
   ) {}
 
-  async execute(pharmacyId: number, dto: CreateSubscriptionCheckoutDto) {
+  async execute(
+    ownerUserId: number,
+    pharmacyId: number,
+    dto: CreateSubscriptionCheckoutDto,
+  ) {
     /*
      * STEP 1
+     * التأكد أن الصيدلية المطلوبة
+     * مملوكة للمستخدم الحالي.
+     */
+
+    const pharmacy = await this.prisma.pharmacy.findFirst({
+      where: {
+        pharmacyId,
+
+        pharmacyOwner: {
+          userId: ownerUserId,
+        },
+      },
+
+      select: {
+        pharmacyId: true,
+        pharmacyName: true,
+        status: true,
+      },
+    });
+
+    if (!pharmacy) {
+      throw new NotFoundException('Pharmacy not found.');
+    }
+
+    /*
+     * STEP 2
      * Idempotency على مستوى MediXa.
      *
      * إذا تم إرسال نفس request مرة ثانية،
@@ -67,24 +97,6 @@ export class CreateSubscriptionCheckoutUseCase {
     }
 
     const now = new Date();
-
-    /*
-     * STEP 2
-     * التأكد أن الصيدلية موجودة.
-     */
-    const pharmacy = await this.prisma.pharmacy.findUnique({
-      where: {
-        pharmacyId,
-      },
-
-      select: {
-        pharmacyId: true,
-      },
-    });
-
-    if (!pharmacy) {
-      throw new NotFoundException('Pharmacy not found.');
-    }
 
     /*
      * STEP 3
@@ -321,6 +333,8 @@ export class CreateSubscriptionCheckoutUseCase {
 
           durationMonths: true,
 
+          idempotencyKey: true,
+
           status: true,
 
           stripeCheckoutSessionId: true,
@@ -386,6 +400,7 @@ export class CreateSubscriptionCheckoutUseCase {
       amount: Prisma.Decimal;
       currency: string;
       durationMonths: number;
+      idempotencyKey: string;
       stripeCheckoutSessionId: string | null;
 
       plan: {
@@ -524,6 +539,8 @@ export class CreateSubscriptionCheckoutUseCase {
 
       durationMonths: number;
 
+      idempotencyKey: string;
+
       status: SubscriptionPaymentStatus;
 
       stripeCheckoutSessionId: string | null;
@@ -595,24 +612,24 @@ export class CreateSubscriptionCheckoutUseCase {
             },
           ],
 
-          //   success_url:
-          //     `${frontendUrl}/subscription/payment/success` +
-          //     `?paymentId=${payment.subscriptionPaymentId}` +
-          //     `&session_id={CHECKOUT_SESSION_ID}`,
-
-          //   cancel_url:
-          //     `${frontendUrl}/subscription/payment/cancel` +
-          //     `?paymentId=${payment.subscriptionPaymentId}`,
-
           success_url:
-            `${frontendUrl}/subscription/payment/result` +
+            `${frontendUrl}//pharmacy_owner/subscription/success` +
             `?paymentId=${payment.subscriptionPaymentId}` +
-            `&source=success`,
+            `&session_id={CHECKOUT_SESSION_ID}`,
 
           cancel_url:
-            `${frontendUrl}/subscription/payment/result` +
-            `?paymentId=${payment.subscriptionPaymentId}` +
-            `&source=cancel`,
+            `${frontendUrl}//pharmacy_owner/subscription/cancel` +
+            `?paymentId=${payment.subscriptionPaymentId}`,
+
+          // success_url:
+          //   `${frontendUrl}/subscription/payment/result` +
+          //   `?paymentId=${payment.subscriptionPaymentId}` +
+          //   `&source=success`,
+
+          // cancel_url:
+          //   `${frontendUrl}/subscription/payment/result` +
+          //   `?paymentId=${payment.subscriptionPaymentId}` +
+          //   `&source=cancel`,
         },
 
         /*
@@ -621,7 +638,8 @@ export class CreateSubscriptionCheckoutUseCase {
          * حتى لو تعطل الاتصال بعد إنشاء Session،
          * إعادة نفس الطلب لا تنشئ Session ثانية.
          */
-        `subscription-payment-${payment.subscriptionPaymentId}`,
+        // `subscription-payment-${payment.subscriptionPaymentId}`,
+        payment.idempotencyKey,
       );
 
       if (!session.url) {

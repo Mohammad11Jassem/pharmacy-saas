@@ -18,7 +18,6 @@ import { StartChatConversationUseCase } from './use-cases/start-chat-conversatio
 import { ChatOutboxDispatcher } from './outbox/chat-outbox.dispatcher';
 import { ProcessChatAnswerUseCase } from './use-cases/process-chat-answer.usecase';
 import { RagServiceClient } from './clients/rag-service-client';
-import { MockRagServiceClient } from './clients/mock-rag-service.client';
 import { JwtModule } from '@nestjs/jwt';
 import { ChatRealtimePublisher } from './services/chat-realtime-publisher.service';
 import { ChatSocketAuthService } from './services/chat-socket-auth.service';
@@ -82,10 +81,6 @@ import { HttpRagServiceClient } from './clients/http-rag-service.client';
 
     ProcessChatAnswerUseCase,
 
-    // {
-    //   provide: RagServiceClient,
-    //   useClass: MockRagServiceClient,
-    // },
     {
       provide: RagServiceClient,
       useClass: HttpRagServiceClient,

@@ -56,14 +56,14 @@ export class ChattingController {
     );
   }
 
-  @Post()
-  @ResponseMessage('RAG conversation created successfully.')
-  createConversation(
-    @ActiveUser('sub') pharmacyId: number,
-    @Body() dto: CreateRagConversationDto,
-  ) {
-    return this.chattingService.createConversation(pharmacyId, dto);
-  }
+  // @Post()
+  // @ResponseMessage('RAG conversation created successfully.')
+  // createConversation(
+  //   @ActiveUser('sub') pharmacyId: number,
+  //   @Body() dto: CreateRagConversationDto,
+  // ) {
+  //   return this.chattingService.createConversation(pharmacyId, dto);
+  // }
 
   /**
    * إرسال سؤال لاحق إلى محادثة موجودة.
