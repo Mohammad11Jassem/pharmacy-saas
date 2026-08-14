@@ -10,22 +10,11 @@ export type RagServiceCitation = {
 };
 
 export type GenerateRagAnswerInput = {
-  ragRequestId: number;
-  ragConversationId: number;
-
-  pharmacyId: number;
-
-  turnNumber: number;
   isFirstTurn: boolean;
 
   question: string;
 
   conversationSummary: string | null;
-
-  recentMessages: Array<{
-    role: 'USER' | 'ASSISTANT';
-    content: string;
-  }>;
 };
 
 export type GenerateRagAnswerOutput = {
@@ -35,6 +24,14 @@ export type GenerateRagAnswerOutput = {
    * يعاد فقط عند أول Turn.
    */
   conversationTitle: string | null;
+  /**
+   * الذاكرة الجديدة التي تمثل:
+   *
+   * previous summary
+   * + current question
+   * + current answer
+   */
+  updatedSummary: string;
 
   citations: RagServiceCitation[];
 };

@@ -38,6 +38,7 @@ import { DailyWindowModule } from './modules/daily-window/daily-window.module';
 import { InvoiceActivityModule } from './modules/invoice-activity/invoice-activity.module';
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { SubscriptionPaymentModule } from './modules/subscription-payment/subscription-payment.module';
+import { GeneralDrugPriceListModule } from './modules/general-drug-price-list/general-drug-price-list.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -108,6 +109,7 @@ import { SubscriptionPaymentModule } from './modules/subscription-payment/subscr
     DailyWindowModule,
     InvoiceActivityModule,
     AnalyticsModule,
+    GeneralDrugPriceListModule,
   ],
   providers: [
     {

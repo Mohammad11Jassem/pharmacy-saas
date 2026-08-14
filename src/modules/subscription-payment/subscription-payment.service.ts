@@ -12,12 +12,20 @@ export class SubscriptionPaymentService {
     private readonly getSubscriptionPaymentStatusUseCase: GetSubscriptionPaymentStatusUseCase,
   ) {}
 
-  createCheckout(pharmacyId: number, dto: CreateSubscriptionCheckoutDto) {
-    return this.createSubscriptionCheckoutUseCase.execute(pharmacyId, dto);
-  }
-  getPaymentStatus(pharmacyId: number, subscriptionPaymentId: number) {
-    return this.getSubscriptionPaymentStatusUseCase.execute(
+  createCheckout(
+    ownerUserId: number,
+    pharmacyId: number,
+    dto: CreateSubscriptionCheckoutDto,
+  ) {
+    return this.createSubscriptionCheckoutUseCase.execute(
+      ownerUserId,
       pharmacyId,
+      dto,
+    );
+  }
+  getPaymentStatus(ownerUserId: number, subscriptionPaymentId: number) {
+    return this.getSubscriptionPaymentStatusUseCase.execute(
+      ownerUserId,
       subscriptionPaymentId,
     );
   }

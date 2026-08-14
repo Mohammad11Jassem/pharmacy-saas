@@ -1,4 +1,11 @@
-import { Body, Controller, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  ParseIntPipe,
+  Post,
+} from '@nestjs/common';
 
 import { AccountType } from '../../generated/prisma/enums';
 
@@ -27,31 +34,36 @@ export class SubscriptionPaymentController {
   }
 
   @Auth(AuthType.Bearer)
-  @Roles(AccountType.PHARMACY)
-  @Post('checkout')
+  @Roles(AccountType.PHARMACY_OWNER)
+  @Post('pharmacies/:pharmacyId/checkout')
   @ResponseMessage('Subscription checkout created successfully.')
   createCheckout(
-    @ActiveUser('sub')
+    @ActiveUser('sub') ownerUserId: number,
+
+    @Param('pharmacyId', ParseIntPipe)
     pharmacyId: number,
     @Body()
     dto: CreateSubscriptionCheckoutDto,
   ) {
-    return this.subscriptionPaymentService.createCheckout(pharmacyId, dto);
+    return this.subscriptionPaymentService.createCheckout(
+      ownerUserId,
+      pharmacyId,
+      dto,
+    );
   }
 
   @Auth(AuthType.Bearer)
-  @Roles(AccountType.PHARMACY)
+  @Roles(AccountType.PHARMACY_OWNER)
   @Get(':id/status')
   @ResponseMessage('Subscription payment status retrieved successfully.')
   getPaymentStatus(
-    @ActiveUser('sub')
-    pharmacyId: number,
+    @ActiveUser('sub') ownerUserId: number,
 
     @Param('id', ParseIntPipe)
     subscriptionPaymentId: number,
   ) {
     return this.subscriptionPaymentService.getPaymentStatus(
-      pharmacyId,
+      ownerUserId,
       subscriptionPaymentId,
     );
   }

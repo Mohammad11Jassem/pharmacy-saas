@@ -68,7 +68,7 @@ export class SubscriptionController {
   // ─── ADMIN: PHARMACY PRIVATE OFFERS ──────────
 
   @Auth(AuthType.Bearer)
-  @Roles(AccountType.ADMIN)
+  @Roles(AccountType.ADMIN, AccountType.PHARMACY_OWNER)
   @Get('admin/pharmacies/:pharmacyId/plans/:planId/private-offers')
   @ResponseMessage('Pharmacy private offers retrieved successfully.')
   listPharmacyPrivateOffers(
