@@ -116,25 +116,13 @@ function createOfferPeriod(): {
 } {
   const startsAt = new Date();
 
-  startsAt.setUTCHours(
-    0,
-    0,
-    0,
-    0,
-  );
+  startsAt.setUTCHours(0, 0, 0, 0);
 
   const endsAt = new Date(startsAt);
 
-  endsAt.setUTCMonth(
-    endsAt.getUTCMonth() + 3,
-  );
+  endsAt.setUTCMonth(endsAt.getUTCMonth() + 3);
 
-  endsAt.setUTCHours(
-    23,
-    59,
-    59,
-    999,
-  );
+  endsAt.setUTCHours(23, 59, 59, 999);
 
   return {
     startsAt,
@@ -145,162 +133,104 @@ function createOfferPeriod(): {
 export async function seedSubscriptionPlans(
   prisma: PrismaClient,
 ): Promise<void> {
-  console.log(
-    'Seeding subscription plans and public offers...',
-  );
+  console.log('Seeding subscription plans and public offers...');
 
-  const {
-    startsAt,
-    endsAt,
-  } = createOfferPeriod();
+  const { startsAt, endsAt } = createOfferPeriod();
 
-  for (
-    const seedPlan of subscriptionPlans
-  ) {
-    const plan =
-      await prisma.subscriptionPlan.upsert({
-        where: {
-          code: seedPlan.code,
-        },
+  for (const seedPlan of subscriptionPlans) {
+    const plan = await prisma.subscriptionPlan.upsert({
+      where: {
+        code: seedPlan.code,
+      },
 
-        update: {
-          name: seedPlan.name,
+      update: {
+        name: seedPlan.name,
+        description: seedPlan.description,
+        durationMonths: seedPlan.durationMonths,
+        planPrice: seedPlan.planPrice,
+        currency: seedPlan.currency,
+        type: seedPlan.type,
+        ragEnabled: seedPlan.ragEnabled,
+        status: SubscriptionPlanStatus.ACTIVE,
+      },
 
-          description:
-            seedPlan.description,
+      create: {
+        code: seedPlan.code,
+        name: seedPlan.name,
+        description: seedPlan.description,
+        durationMonths: seedPlan.durationMonths,
+        planPrice: seedPlan.planPrice,
+        currency: seedPlan.currency,
+        type: seedPlan.type,
+        ragEnabled: seedPlan.ragEnabled,
+        status: SubscriptionPlanStatus.ACTIVE,
+      },
 
-          durationMonths:
-            seedPlan.durationMonths,
+      select: {
+        planId: true,
+        code: true,
+        name: true,
+        ragEnabled: true,
+      },
+    });
+    const offer = await prisma.planOffer.upsert({
+      where: {
+        code: seedPlan.offer.code,
+      },
 
-          planPrice:
-            seedPlan.planPrice,
+      update: {
+        planId: plan.planId,
 
-          currency:
-            seedPlan.currency,
+        title: seedPlan.offer.title,
 
-          type:
-            seedPlan.type,
+        description: seedPlan.offer.description,
 
-          status:
-            SubscriptionPlanStatus.ACTIVE,
-        },
+        scope: OfferScope.PUBLIC,
 
-        create: {
-          code:
-            seedPlan.code,
+        discountType: seedPlan.offer.discountType,
 
-          name:
-            seedPlan.name,
+        discountValue: seedPlan.offer.discountValue,
 
-          description:
-            seedPlan.description,
+        isActive: true,
 
-          durationMonths:
-            seedPlan.durationMonths,
+        startsAt,
 
-          planPrice:
-            seedPlan.planPrice,
+        endsAt,
+      },
 
-          currency:
-            seedPlan.currency,
+      create: {
+        planId: plan.planId,
 
-          type:
-            seedPlan.type,
+        code: seedPlan.offer.code,
 
-          status:
-            SubscriptionPlanStatus.ACTIVE,
-        },
+        title: seedPlan.offer.title,
 
-        select: {
-          planId: true,
-          code: true,
-          name: true,
-        },
-      });
+        description: seedPlan.offer.description,
 
-    const offer =
-      await prisma.planOffer.upsert({
-        where: {
-          code:
-            seedPlan.offer.code,
-        },
+        scope: OfferScope.PUBLIC,
 
-        update: {
-          planId:
-            plan.planId,
+        discountType: seedPlan.offer.discountType,
 
-          title:
-            seedPlan.offer.title,
+        discountValue: seedPlan.offer.discountValue,
 
-          description:
-            seedPlan.offer.description,
+        isActive: true,
 
-          scope:
-            OfferScope.PUBLIC,
+        startsAt,
 
-          discountType:
-            seedPlan.offer
-              .discountType,
+        endsAt,
+      },
 
-          discountValue:
-            seedPlan.offer
-              .discountValue,
+      select: {
+        offerId: true,
+        code: true,
+        title: true,
+        discountType: true,
+        discountValue: true,
+      },
+    });
 
-          isActive:
-            true,
-
-          startsAt,
-
-          endsAt,
-        },
-
-        create: {
-          planId:
-            plan.planId,
-
-          code:
-            seedPlan.offer.code,
-
-          title:
-            seedPlan.offer.title,
-
-          description:
-            seedPlan.offer.description,
-
-          scope:
-            OfferScope.PUBLIC,
-
-          discountType:
-            seedPlan.offer
-              .discountType,
-
-          discountValue:
-            seedPlan.offer
-              .discountValue,
-
-          isActive:
-            true,
-
-          startsAt,
-
-          endsAt,
-        },
-
-        select: {
-          offerId: true,
-          code: true,
-          title: true,
-          discountType: true,
-          discountValue: true,
-        },
-      });
-
-    console.log(
-      `✓ Plan ${plan.code} seeded with public offer ${offer.code}`,
-    );
+    console.log(`✓ Plan ${plan.code} seeded with public offer ${offer.code}`);
   }
 
-  console.log(
-    'Subscription plans and public offers seeded successfully.',
-  );
+  console.log('Subscription plans and public offers seeded successfully.');
 }

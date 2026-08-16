@@ -241,18 +241,23 @@ enum SubscriptionPaymentStatus {
   EXPIRED
 }
 
+enum NotificationRecipientType {
+  PHARMACY
+  PHARMACY_OWNER
+}
+
 // ─── USER ACCOUNT ─────────────────────────────────────────────────────────────
 
 model UserAccount {
-  userId       Int               @id @default(autoincrement()) @map("user_id")
-  email        String            @unique
-  phone        String            @unique
-  fullName     String            @map("full_name")
-  passwordHash String?           @map("password_hash")
-  accountType  AccountType       @map("account_type")
-  status       UserAccountStatus @default(ACTIVE)
-  loginCode    String            @unique @map("login_code")
-
+  userId        Int               @id @default(autoincrement()) @map("user_id")
+  email         String            @unique
+  phone         String            @unique
+  fullName      String            @map("full_name")
+  passwordHash  String?           @map("password_hash")
+  accountType   AccountType       @map("account_type")
+  status        UserAccountStatus @default(ACTIVE)
+  loginCode     String            @unique @map("login_code")
+  fcmToken      String?           @unique @map("fcm_token")
   pharmacyOwner PharmacyOwner?
 
   createdAt DateTime @default(now()) @map("created_at")
@@ -287,20 +292,20 @@ model Pharmacy {
   pharmacyOwnerId Int           @map("pharmacy_owner_id")
   pharmacyOwner   PharmacyOwner @relation(fields: [pharmacyOwnerId], references: [pharmacyOwnerId], onDelete: Cascade)
 
-  pharmacistLicenseNo String?        @unique @map("pharmacist_license_no")
-  pharmacyName        String         @map("pharmacy_name")
-  pharmacyCode        String?        @unique @map("pharmacy_code")
-  contactPhone        String?        @map("contact_phone")
-  email               String?        @unique
+  pharmacistLicenseNo String?             @unique @map("pharmacist_license_no")
+  pharmacyName        String              @map("pharmacy_name")
+  pharmacyCode        String?             @unique @map("pharmacy_code")
+  contactPhone        String?             @map("contact_phone")
+  email               String?             @unique
   governorate         String?
-  healthDirectorate   String?        @map("health_directorate")
-  areaName            String?        @map("area_name")
-  addressText         String?        @map("address_text")
-  status              PharmacyStatus @default(PENDING)
-  openingDate         DateTime?      @map("opening_date") @db.Date
-
-  credential PharmacyCredential?
-  documents  PharmacyDocument[]
+  healthDirectorate   String?             @map("health_directorate")
+  areaName            String?             @map("area_name")
+  addressText         String?             @map("address_text")
+  status              PharmacyStatus      @default(PENDING)
+  openingDate         DateTime?           @map("opening_date") @db.Date
+  fcmToken            String?             @unique @map("fcm_token")
+  credential          PharmacyCredential?
+  documents           PharmacyDocument[]
 
   pharmacyDrugs    PharmacyDrug[]
   suppliers        Supplier[]
@@ -1686,4 +1691,19 @@ model GeneralDrugPriceListItem {
   @@unique([generalDrugPriceListId, generalDrugId])
   @@index([generalDrugId])
   @@map("general_drug_price_list_items")
+}
+
+model Notification {
+  notificationId Int @id @default(autoincrement()) @map("notification_id")
+
+  title String
+  body  String
+
+  recipientType NotificationRecipientType @map("recipient_type")
+  recipientId   Int                       @map("recipient_id")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([recipientType, recipientId, createdAt])
+  @@map("notifications")
 }

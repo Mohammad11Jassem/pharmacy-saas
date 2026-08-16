@@ -1064,10 +1064,11 @@ export class SubscribePharmacyUseCase {
      *
      * ACTIVE
      */
-    const subscriptionStatus = PharmacySubscriptionStatus.ACTIVE
-      // startsAt.getTime() > now.getTime()
-      //   ? PharmacySubscriptionStatus.SCHEDULED
-      //   : PharmacySubscriptionStatus.ACTIVE;
+    const subscriptionStatus = 
+    // PharmacySubscriptionStatus.ACTIVE
+      startsAt.getTime() > now.getTime()
+        ? PharmacySubscriptionStatus.SCHEDULED
+        : PharmacySubscriptionStatus.ACTIVE;
 
     // =========================================================
     // STEP 11

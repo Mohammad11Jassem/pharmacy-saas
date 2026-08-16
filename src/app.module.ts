@@ -39,12 +39,14 @@ import { InvoiceActivityModule } from './modules/invoice-activity/invoice-activi
 import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { SubscriptionPaymentModule } from './modules/subscription-payment/subscription-payment.module';
 import { GeneralDrugPriceListModule } from './modules/general-drug-price-list/general-drug-price-list.module';
+import { cert, getApps, initializeApp } from 'firebase-admin/app';
+import { NotificationModule } from './notification/notification.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
-    AppModule,
+    // AppModule,
     PrismaModule,
     UsersModule,
     PharmacyOwnersModule,
@@ -110,6 +112,7 @@ import { GeneralDrugPriceListModule } from './modules/general-drug-price-list/ge
     InvoiceActivityModule,
     AnalyticsModule,
     GeneralDrugPriceListModule,
+    NotificationModule,
   ],
   providers: [
     {
@@ -120,8 +123,42 @@ import { GeneralDrugPriceListModule } from './modules/general-drug-price-list/ge
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
     },
-    AppService
+    AppService,
   ],
   controllers: [AppController],
 })
-export class AppModule {}
+export class AppModule {
+  // constructor() {
+  //   // Build the path of the Firebase service account file.
+  //   const serviceAccountPath = join(
+  //     process.cwd(),
+  //     'secrets',
+  //     'firebase-service-account.json',
+  //   );
+
+  //   // Load Firebase credentials.
+  //   const serviceAccount = require(serviceAccountPath);
+
+  //   // Initialize Firebase only once.
+  //   if (!admin.apps.length) {
+  //     admin.initializeApp({
+  //       credential: admin.credential.cert(
+  //         serviceAccount,
+  //       ),
+  //     });
+  //   }
+  // }
+
+  constructor() {
+    // Initialize Firebase only once.
+    if (getApps().length === 0) {
+      initializeApp({
+        credential: cert({
+          projectId: process.env.FIREBASE_PROJECT_ID!,
+          clientEmail: process.env.FIREBASE_CLIENT_EMAIL!,
+          privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n')!,
+        }),
+      });
+    }
+  }
+}

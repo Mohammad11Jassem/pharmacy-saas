@@ -10,6 +10,7 @@ import { SubscribePharmacyUseCase } from './use-cases/subscribe-pharmacy.usecase
 import { CreatePlanOfferUseCase } from './use-cases/create-plan-offer.usecase';
 import { FindPharmacySubscriptionsUseCase } from './use-cases/find-pharmacy-subscriptions.usecase';
 import { ListUnexpiredPrivateOffersUseCase } from './use-cases/list-unexpired-private-offers.use-case';
+import { SubscriptionStatusScheduler } from './use-cases/subscription-status.scheduler';
 
 @Module({
   controllers: [
@@ -33,6 +34,9 @@ import { ListUnexpiredPrivateOffersUseCase } from './use-cases/list-unexpired-pr
     CreatePlanOfferUseCase,
     FindPharmacySubscriptionsUseCase,
     ListUnexpiredPrivateOffersUseCase,
+
+    // cron job to update subscription status
+    SubscriptionStatusScheduler,
   ],
 })
 export class SubscriptionModule {}

@@ -613,12 +613,12 @@ export class CreateSubscriptionCheckoutUseCase {
           ],
 
           success_url:
-            `${frontendUrl}//pharmacy_owner/subscription/success` +
+            `${frontendUrl}/pharmacy_owner/subscription/success` +
             `?paymentId=${payment.subscriptionPaymentId}` +
             `&session_id={CHECKOUT_SESSION_ID}`,
 
           cancel_url:
-            `${frontendUrl}//pharmacy_owner/subscription/cancel` +
+            `${frontendUrl}/pharmacy_owner/subscription/cancel` +
             `?paymentId=${payment.subscriptionPaymentId}`,
 
           // success_url:

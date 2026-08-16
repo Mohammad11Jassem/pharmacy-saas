@@ -65,7 +65,8 @@ export class CurrentInventoryAlertsService {
              * Load only batches that still have quantity.
              */
             initialQuantity: {
-              gt: this.prisma.batch.fields.soldQuantity,
+              // gt: this.prisma.batch.fields.soldQuantity,
+              gt: 0,
             },
 
             status: {

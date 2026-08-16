@@ -153,6 +153,7 @@ import {
   seedPharmacyDrugCatalog,
 } from './seeds/master-data/drug-catalog.seed';
 import { seedAnalyticsHistory } from './seeds/analytics-history.seed';
+import { seedPharmacySubscription } from './seeds/master-data/pharmacy-subscription.seed';
 const prisma = createPrismaSeedClient();
 
 async function main() {
@@ -179,7 +180,7 @@ async function main() {
     pharmacyPasswordHash,
   });
   const targetPharmacyIdRaw = process.env.SEED_TARGET_PHARMACY_ID;
-
+  await seedPharmacySubscription(prisma, 1);
   /*
    * If SEED_TARGET_PHARMACY_ID is provided,
    * drugs will be assigned to that pharmacy.
