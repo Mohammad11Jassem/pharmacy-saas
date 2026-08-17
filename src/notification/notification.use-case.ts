@@ -3,11 +3,11 @@ import { Injectable } from '@nestjs/common';
 import { InjectQueue } from '@nestjs/bullmq';
 import { Queue } from 'bullmq';
 
-
 import { NotificationService } from './notification.service';
 
 import {
   NOTIFICATION_QUEUE,
+  PRICE_LIST_CHANGED_JOB,
   SEND_NOTIFICATION_JOB,
 } from './notification.queue';
 import { NotificationRecipientType } from '../generated/prisma/enums';
@@ -47,5 +47,30 @@ export class NotificationUseCase {
     );
 
     return notification;
+  }
+
+  async enqueuePriceListChanged(generalDrugPriceListId: number) {
+    await this.notificationQueue.add(
+      PRICE_LIST_CHANGED_JOB,
+
+      {
+        generalDrugPriceListId,
+      },
+
+      {
+        /**
+         * يمنع إدخال نفس Price List
+         * كـ Job مرتين ما دام الـ Job موجوداً.
+         */
+        jobId: `price-list-notifications-${generalDrugPriceListId}`,
+
+        attempts: 3,
+
+        backoff: {
+          type: 'exponential',
+          delay: 3000,
+        },
+      },
+    );
   }
 }

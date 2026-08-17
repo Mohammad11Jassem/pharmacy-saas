@@ -14,6 +14,7 @@ import { FindPharmacySubscriptionsUseCase } from './use-cases/find-pharmacy-subs
 import { ListPharmacySubscriptionsDto } from './dto/list-pharmacy-subscriptions.dto';
 import { PharmacySubscriptionsResponseDto } from './dto/pharmacy-subscriptions-response.dto';
 import { ListUnexpiredPrivateOffersUseCase } from './use-cases/list-unexpired-private-offers.use-case';
+import { ListSubscriptionPlansUseCase } from './use-cases/list-subscription-plans.usecase';
 
 @Injectable()
 export class SubscriptionService {
@@ -30,6 +31,7 @@ export class SubscriptionService {
     private readonly createPlanOfferUseCase: CreatePlanOfferUseCase,
     private readonly findPharmacySubscriptionsUseCase: FindPharmacySubscriptionsUseCase,
     private readonly listUnexpiredPrivateOffersUseCase: ListUnexpiredPrivateOffersUseCase,
+    private readonly listSubscriptionPlansUseCase: ListSubscriptionPlansUseCase,
   ) {}
 
   listPublicPlans() {
@@ -77,5 +79,9 @@ export class SubscriptionService {
 
   listUnexpiredPrivateOffers() {
     return this.listUnexpiredPrivateOffersUseCase.execute();
+  }
+
+  listPlans() {
+    return this.listSubscriptionPlansUseCase.execute();
   }
 }

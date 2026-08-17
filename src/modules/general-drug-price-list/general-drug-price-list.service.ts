@@ -1,12 +1,14 @@
 import {
   BadRequestException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { UnitOfWork } from '../../common/TransactionWrapper/unit-of-work';
 import { Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PublishGeneralDrugPriceListDto } from './dto/publish-general-drug-price-list.dto';
+import { NotificationUseCase } from '../../notification/notification.use-case';
 
 type DbClient = PrismaService | Prisma.TransactionClient;
 
@@ -30,15 +32,17 @@ type PriceListSummary = {
 
 @Injectable()
 export class GeneralDrugPriceListService {
+  private readonly logger = new Logger(GeneralDrugPriceListService.name);
   constructor(
     private readonly prisma: PrismaService,
     private readonly unitOfWork: UnitOfWork,
+    private readonly notificationUseCase: NotificationUseCase,
   ) {}
 
   async publish(dto: PublishGeneralDrugPriceListDto) {
     this.validatePublishDto(dto);
 
-    return this.unitOfWork.executeSerializable(async (tx) => {
+    const result = await this.unitOfWork.executeSerializable(async (tx) => {
       const requestedIds = dto.items.map((item) => item.generalDrugId);
 
       const generalDrugs = await tx.generalDrug.findMany({
@@ -78,8 +82,7 @@ export class GeneralDrugPriceListService {
           const previousConsumerPrice = Number(drug.consumerPrice);
 
           const newNetPrice = item.netPrice ?? previousNetPrice;
-          const newConsumerPrice =
-            item.consumerPrice ?? previousConsumerPrice;
+          const newConsumerPrice = item.consumerPrice ?? previousConsumerPrice;
 
           const netPriceChanged = !this.sameMoney(
             previousNetPrice,
@@ -101,9 +104,7 @@ export class GeneralDrugPriceListService {
             consumerPriceChanged,
           };
         })
-        .filter(
-          (item) => item.netPriceChanged || item.consumerPriceChanged,
-        );
+        .filter((item) => item.netPriceChanged || item.consumerPriceChanged);
 
       if (changes.length === 0) {
         throw new BadRequestException('No actual price changes detected');
@@ -155,6 +156,23 @@ export class GeneralDrugPriceListService {
         items: changes,
       };
     });
+    try {
+      await this.notificationUseCase.enqueuePriceListChanged(
+        result.generalDrugPriceListId,
+      );
+    } catch (error) {
+      /**
+       * لا نرجع Error للـ Admin هنا،
+       * لأن Price List تم نشرها بالفعل.
+       */
+      this.logger.error(
+        `Price list ${result.generalDrugPriceListId} was published, but notification job could not be queued.`,
+
+        error instanceof Error ? error.stack : undefined,
+      );
+    }
+
+    return result;
   }
 
   async getStatus(pharmacyId: number) {
@@ -239,13 +257,11 @@ export class GeneralDrugPriceListService {
       return {
         applied: true,
         idempotentReplay: false,
-        previousAppliedVersion:
-          context.lastAppliedPriceList?.version ?? null,
+        previousAppliedVersion: context.lastAppliedPriceList?.version ?? null,
         appliedPriceList: context.latestPriceList,
         updatedDrugsCount: context.changes.length,
         affectedDrugsCount: context.changes.length,
-        changedGeneralDrugsSinceLastApply:
-          context.changedGeneralDrugsCount,
+        changedGeneralDrugsSinceLastApply: context.changedGeneralDrugsCount,
         ignoredNotOwnedDrugsCount: Math.max(
           0,
           context.changedGeneralDrugsCount - context.ownedChangedDrugsCount,

@@ -757,6 +757,7 @@ model PurchaseOrder {
   orderDate   DateTime    @default(now()) @map("order_date") @db.Date
   orderStatus OrderStatus @default(PENDING) @map("order_status")
   notes       String?     @db.Text
+  expectedReceiptDate DateTime? @map("expected_receipt_date") @db.Date
 
   items PurchaseOrderItem[]
 
@@ -764,6 +765,7 @@ model PurchaseOrder {
 
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  @@index([pharmacyId, orderStatus, expectedReceiptDate])
   @@map("purchase_orders")
 }
 

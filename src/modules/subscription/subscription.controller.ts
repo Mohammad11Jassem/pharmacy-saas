@@ -68,7 +68,7 @@ export class SubscriptionController {
   // ─── ADMIN: PHARMACY PRIVATE OFFERS ──────────
 
   @Auth(AuthType.Bearer)
-  @Roles(AccountType.ADMIN,AccountType.PHARMACY_OWNER)
+  @Roles(AccountType.ADMIN, AccountType.PHARMACY_OWNER)
   @Get('admin/pharmacies/:pharmacyId/plans/:planId/private-offers')
   @ResponseMessage('Pharmacy private offers retrieved successfully.')
   listPharmacyPrivateOffers(
@@ -143,5 +143,12 @@ export class SubscriptionController {
   @ResponseMessage('Unexpired private offers retrieved successfully.')
   listUnexpiredPrivateOffers() {
     return this.subscriptionService.listUnexpiredPrivateOffers();
+  }
+
+  @Auth(AuthType.None)
+  @Get('plans')
+  @ResponseMessage('Subscription plans retrieved successfully.')
+  listPlans() {
+    return this.subscriptionService.listPlans();
   }
 }

@@ -146,10 +146,16 @@ export class CurrentInventoryAlertsService {
       /**
        * Zero stock and low stock use the same UI type.
        */
+      const stockAlertThreshold =
+        pharmacyDrug.minStockAlert !== null
+          ? pharmacyDrug.minStockAlert * unitsPerBox
+          : null;
+
       const hasStockAlert =
         availableQuantity === 0 ||
-        (pharmacyDrug.minStockAlert !== null &&
-          availableQuantity <= pharmacyDrug.minStockAlert);
+        (stockAlertThreshold !== null &&
+          availableQuantity <= stockAlertThreshold);
+      
 
       if (hasStockAlert) {
         alerts.push({

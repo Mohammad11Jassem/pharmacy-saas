@@ -1,4 +1,4 @@
-import { IsString, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class PharmacySignInDto {
   @IsString()
@@ -9,4 +9,8 @@ export class PharmacySignInDto {
   @MinLength(8)
   @MaxLength(100)
   password!: string;
+
+  @IsOptional()
+  @IsString()
+  fcm_token?: string;
 }

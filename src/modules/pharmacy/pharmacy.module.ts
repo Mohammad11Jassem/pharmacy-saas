@@ -6,6 +6,7 @@ import { PharmacyService } from './pharmacy.service';
 import { PharmacyAccountResponseMapper } from './mappers/pharmacy-account-response.mapper';
 import { PharmacyCredentialsModule } from '../pharmacy-credentials/pharmacy-credentials.module';
 import { SubscriptionModule } from '../subscription/subscription.module';
+import { SmsModule } from '../../common/integrations/sms/sms.module';
 
 @Module({
   imports: [
@@ -13,6 +14,7 @@ import { SubscriptionModule } from '../subscription/subscription.module';
     PharmacyOwnersModule,
     PharmacyCredentialsModule,
     SubscriptionModule,
+    SmsModule,
   ],
   controllers: [PharmacyController],
   providers: [PharmacyService, PharmacyAccountResponseMapper],

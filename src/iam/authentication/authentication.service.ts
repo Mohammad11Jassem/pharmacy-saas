@@ -118,7 +118,18 @@ export class AuthenticationService {
     if (!isPasswordValid) {
       throw new UnauthorizedException('بيانات الاعتماد غير صحيحة');
     }
+    // Store / refresh FCM token only after successful login.
+    if (signInDto.fcm_token) {
+      await this.prisma.userAccount.update({
+        where: {
+          userId: user.userId,
+        },
 
+        data: {
+          fcmToken: signInDto.fcm_token,
+        },
+      });
+    }
     const tokens = await this.generateTokens({
       userId: user.userId,
       email: user.email,
@@ -512,7 +523,16 @@ export class AuthenticationService {
     if (!isPasswordValid) {
       throw new UnauthorizedException('Invalid pharmacy credentials.');
     }
-
+    if (dto.fcm_token) {
+      await this.prisma.pharmacy.update({
+        where: {
+          pharmacyId: credential.pharmacyId,
+        },
+        data: {
+          fcmToken: dto.fcm_token,
+        },
+      });
+    }
     const tokens = await this.generatePharmacyTokens({
       pharmacyId: credential.pharmacy.pharmacyId,
     });

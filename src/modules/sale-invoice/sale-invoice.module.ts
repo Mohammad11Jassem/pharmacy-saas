@@ -8,10 +8,11 @@ import { FindAllSaleInvoicesUseCase } from './use-cases/find-all-sale-invoices.u
 import { FindSaleInvoiceByIdUseCase } from './use-cases/find-sale-invoice-by-id.usecase';
 import { FindSaleInvoiceBatchesUseCase } from './use-cases/find-sale-invoice-batches.usecase';
 import { SaleInvoicePostingService } from './services/sale-invoice-posting.service';
+import { NotificationModule } from '../../notification/notification.module';
 
 
 @Module({
-  imports: [PatientModule],
+  imports: [PatientModule,NotificationModule],
   controllers: [SaleInvoiceController],
   providers: [
     SaleInvoiceService,

@@ -167,4 +167,18 @@ export class SmsService {
 
     return `${'*'.repeat(phone.length - 4)}${phone.slice(-4)}`;
   }
+
+  /**
+   * Sends the pharmacy login code to its owner.
+   */
+  async sendPharmacyLoginCode(
+    phone: string,
+    pharmacyName: string,
+    loginCode: string,
+  ): Promise<SmsSendResult> {
+    return this.sendSms(
+      phone,
+      `MediXa: تم إنشاء صيدلية ${pharmacyName} بنجاح. رمز تسجيل الدخول للصيدلية هو: ${loginCode}`,
+    );
+  }
 }

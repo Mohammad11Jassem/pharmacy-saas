@@ -2,6 +2,7 @@ import {
   BadRequestException,
   ConflictException,
   Injectable,
+  Logger,
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '../../generated/prisma/client';
@@ -16,12 +17,16 @@ import { UpdatePharmacyDto } from './dto/update-pharmacy.dto';
 import { PharmacyCredentialsService } from '../pharmacy-credentials/pharmacy-credentials.service';
 import { PharmacyAccountResponseMapper } from './mappers/pharmacy-account-response.mapper';
 import { PharmacyAccountResponseDto } from './dto/pharmacy-account-response.dto';
-import { PharmacyStatus } from '../../generated/prisma/enums';
+import {
+  PharmacyStatus,
+  PharmacySubscriptionStatus,
+} from '../../generated/prisma/enums';
 import { ChangePharmacyStatusDto } from './dto/change-pharmacy-status.dto';
 import { ListPharmaciesQueryDto } from './dto/list-pharmacies-query.dto';
 import { UnitOfWork } from '../../common/TransactionWrapper/unit-of-work';
 import { SubscriptionService } from '../subscription/subscription.service';
 import { SubscribePharmacyResponseDto } from '../subscription/dto/subscribe-pharmacy-response.dto';
+import { SmsService } from '../../common/integrations/sms/sms.service';
 
 type TransactionClient = Prisma.TransactionClient;
 
@@ -50,6 +55,7 @@ type TransactionClient = Prisma.TransactionClient;
 
 @Injectable()
 export class PharmacyService {
+  private readonly logger = new Logger(PharmacyService.name);
   constructor(
     private readonly prisma: PrismaService,
     // private readonly codeGenerationService: CodeGenerationService,
@@ -58,6 +64,7 @@ export class PharmacyService {
     private readonly pharmacyAccountResponseMapper: PharmacyAccountResponseMapper,
     // private readonly unitOfWork: UnitOfWork,
     private readonly subscriptionService: SubscriptionService,
+    private readonly smsService: SmsService,
   ) {}
 
   async createPharmacyAccount(
@@ -95,10 +102,50 @@ export class PharmacyService {
         subscription,
       };
     });
-
+    // later test it
+    // await this.sendPharmacyLoginCodeSms(
+    //   result.owner.userId,
+    //   result.pharmacy.pharmacyName,
+    //   result.credential.loginCode,
+    // );
     return this.pharmacyAccountResponseMapper.toResponse(result);
   }
+  private async sendPharmacyLoginCodeSms(
+    ownerUserId: number,
+    pharmacyName: string,
+    loginCode: string,
+  ): Promise<void> {
+    try {
+      const owner = await this.prisma.userAccount.findUnique({
+        where: {
+          userId: ownerUserId,
+        },
+        select: {
+          phone: true,
+        },
+      });
 
+      if (!owner?.phone) {
+        this.logger.warn(
+          `Pharmacy login SMS was not sent because owner ${ownerUserId} has no phone number.`,
+        );
+
+        return;
+      }
+
+      await this.smsService.sendPharmacyLoginCode(
+        owner.phone,
+        pharmacyName,
+        loginCode,
+      );
+    } catch (error: unknown) {
+      const reason = error instanceof Error ? error.message : 'Unknown error';
+
+      this.logger.error(
+        `Pharmacy account was created, but login-code SMS failed for owner ${ownerUserId}. Reason: ${reason}`,
+      );
+    }
+  }
   private async resolveOwner(
     tx: TransactionClient,
     dto: CreatePharmacyAccountDto,
@@ -284,7 +331,7 @@ export class PharmacyService {
         mode: 'insensitive',
       };
     }
-
+    const now = new Date();
     const [total, pharmacies] = await this.prisma.$transaction([
       this.prisma.pharmacy.count({
         where,
@@ -329,18 +376,35 @@ export class PharmacyService {
               },
             },
           },
+          subscriptions: {
+            where: {
+              status: PharmacySubscriptionStatus.ACTIVE,
+
+              startsAt: {
+                lte: now,
+              },
+
+              endsAt: {
+                gt: now,
+              },
+            },
+
+            select: {
+              pharmacySubscriptionId: true,
+            },
+
+            take: 1,
+          },
         },
       }),
     ]);
-    const mappedPharmacies = pharmacies.map((pharmacy) => ({
-      ...pharmacy,
+    const mappedPharmacies = pharmacies.map(
+      ({ subscriptions, ...pharmacy }) => ({
+        ...pharmacy,
 
-      /*
-       * Placeholder until subscription tables are added.
-       * Later this value will be calculated from pharmacy subscriptions.
-       */
-      hasActiveSubscription: false,
-    }));
+        hasActiveSubscription: subscriptions.length > 0,
+      }),
+    );
     const totalPages = Math.ceil(total / limit);
 
     return {

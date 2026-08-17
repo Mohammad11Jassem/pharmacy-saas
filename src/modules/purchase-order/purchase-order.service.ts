@@ -15,37 +15,111 @@ import {
   purchaseOrderItemsWithTradeNameInclude,
   purchaseOrderListInclude,
 } from './mappers/purchase-order-response.mapper';
-import { getPaginationParams, toPaginatedResult } from '../../common/pagination/pagination.util';
+import {
+  getPaginationParams,
+  toPaginatedResult,
+} from '../../common/pagination/pagination.util';
 
 @Injectable()
 export class PurchaseOrderService {
   constructor(private readonly prisma: PrismaService) {}
 
   async create(pharmacyId: number, dto: CreatePurchaseOrderDto) {
+    /**
+     * يجب أن يحتوي طلب المورد على دواء واحد على الأقل.
+     */
     if (!dto.items?.length) {
       throw new BadRequestException(
         'Purchase order must contain at least one item',
       );
     }
-    return await this.prisma.$transaction(async (tx) => {
+
+    /**
+     * expectedReceiptDate اختياري عند إنشاء الطلب.
+     *
+     * إذا قام الصيدلي بإرساله:
+     * - نحوله إلى Date
+     * - نتحقق أنه ليس في الماضي
+     *
+     * مثال للقيمة القادمة من DTO:
+     * "2026-08-25"
+     */
+    let expectedReceiptDate: Date | null = null;
+
+    if (dto.expectedReceiptDate) {
+      expectedReceiptDate = new Date(dto.expectedReceiptDate);
+
+      /**
+       * بداية اليوم الحالي.
+       *
+       * نستخدم UTC لأن Date القادمة من:
+       * YYYY-MM-DD
+       * يتم تفسيرها كتاريخ UTC.
+       */
+      const today = new Date();
+
+      today.setUTCHours(0, 0, 0, 0);
+
+      if (expectedReceiptDate < today) {
+        throw new BadRequestException(
+          'Expected receipt date cannot be in the past',
+        );
+      }
+    }
+
+    return this.prisma.$transaction(async (tx) => {
+      /**
+       * نتأكد بالتوازي من:
+       *
+       * 1. المورد يتبع للصيدلية.
+       * 2. جميع الأدوية تتبع للصيدلية.
+       */
       await Promise.all([
         this.assertSupplierBelongsToPharmacy(dto.supplierId, pharmacyId, tx),
+
         this.assertDrugsBelongToPharmacy(dto.items, pharmacyId, tx),
       ]);
 
+      /**
+       * إنشاء Purchase Order.
+       *
+       * orderStatus غير مرسل هنا،
+       * لذلك Prisma سيضع القيمة الافتراضية:
+       *
+       * PENDING
+       *
+       * أي أن الطلب يبدأ كمسودة.
+       */
       return tx.purchaseOrder.create({
         data: {
           pharmacyId,
+
           supplierId: dto.supplierId,
+
           notes: dto.notes,
+
+          /**
+           * يمكن أن تكون:
+           *
+           * Date
+           * أو
+           * null
+           *
+           * لأن الحقل اختياري في الـ schema.
+           */
+          expectedReceiptDate,
+
           items: {
             create: dto.items.map((item) => ({
               pharmacyDrugId: item.pharmacyDrugId,
+
               orderedQuantityBoxes: item.orderedQuantityBoxes,
+
               notes: item.notes,
             })),
           },
         },
+
         include: {
           items: true,
         },

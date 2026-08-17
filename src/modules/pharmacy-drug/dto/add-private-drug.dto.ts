@@ -31,6 +31,7 @@ export class AddPrivateDrugDto {
 
   @IsInt()
   @IsPositive()
+  @Min(1)
   unitsPerBox: number;
 
   @IsOptional()

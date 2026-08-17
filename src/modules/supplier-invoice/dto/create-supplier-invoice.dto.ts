@@ -3,9 +3,10 @@ import { IsInt, Min, IsOptional, IsString, IsArray, ValidateNested, IsDateString
 import { CreateSupplierInvoiceItemDto } from '../../supplier-invoice-item/dto/create-supplier-invoice-item.dto';
 
 export class CreateSupplierInvoiceDto {
+  @IsOptional()
   @IsInt()
   @Min(1)
-  supplierId: number;
+  supplierId?: number;
 
   @IsOptional()
   @IsString()
