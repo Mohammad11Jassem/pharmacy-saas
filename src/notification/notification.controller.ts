@@ -2,7 +2,10 @@ import { Controller, Get, Query } from '@nestjs/common';
 
 import { NotificationService } from './notification.service';
 
-import { AccountType, NotificationRecipientType } from '../generated/prisma/enums';
+import {
+  AccountType,
+  NotificationRecipientType,
+} from '../generated/prisma/enums';
 
 import { Auth } from '../iam/authentication/decorators/auth.decorator';
 
@@ -25,9 +28,14 @@ export class NotificationController {
     @ActiveUser('sub')
     pharmacyId: number,
     @Query()
-    dto : PaginationQueryDto
+    dto: PaginationQueryDto,
   ) {
-    return this.notificationService.getAll(NotificationRecipientType.PHARMACY, pharmacyId, dto.page, dto.limit);
+    return this.notificationService.getAll(
+      NotificationRecipientType.PHARMACY,
+      pharmacyId,
+      dto.page,
+      dto.limit,
+    );
   }
 
   // Get notifications for the logged-in pharmacy owner.
@@ -37,8 +45,32 @@ export class NotificationController {
     @ActiveUser('sub')
     userId: number,
     @Query()
-    dto : PaginationQueryDto
+    dto: PaginationQueryDto,
   ) {
-    return this.notificationService.getOwnerNotifications(userId,dto);
+    return this.notificationService.getOwnerNotifications(userId, dto);
+  }
+
+  @Get()
+  @Roles(AccountType.PHARMACY, AccountType.PHARMACY_OWNER,AccountType.MEDICAL_TEAM,AccountType.ADMIN)
+  getNotifications(
+    @ActiveUser('sub')
+    accountId: number,
+
+    @ActiveUser('accountType')
+    accountType: AccountType,
+
+    @Query()
+    dto: PaginationQueryDto,
+  ) {
+    if (accountType === AccountType.PHARMACY) {
+      return this.notificationService.getAll(
+        NotificationRecipientType.PHARMACY,
+        accountId,
+        dto.page,
+        dto.limit,
+      );
+    }
+
+    return this.notificationService.getOwnerNotifications(accountId, dto);
   }
 }
