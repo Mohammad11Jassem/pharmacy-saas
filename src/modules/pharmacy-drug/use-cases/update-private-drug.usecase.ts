@@ -175,7 +175,7 @@ export class UpdatePrivateDrugUseCase {
             (item) => item.ingredientId,
           );
 
-          const ingredients = await tx.drugIngredient.findMany({
+          const ingredients = await tx.activeIngredient.findMany({
             where: {
               ingredientId: {
                 in: ingredientIds,
@@ -185,7 +185,8 @@ export class UpdatePrivateDrugUseCase {
               ingredientId: true,
             },
           });
-
+          // console.log("ingredientIds: "+ingredientIds)
+          // console.log("ingredients: "+ingredients)
           if (ingredients.length !== ingredientIds.length) {
             throw new NotFoundException(
               'One or more ingredients were not found',
