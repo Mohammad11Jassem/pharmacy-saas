@@ -127,7 +127,7 @@ export class SubscriptionController {
   }
 
   @Get('admin/pharmacies/:pharmacyId/subscriptions')
-  @Roles(AccountType.ADMIN)
+  @Roles(AccountType.ADMIN,AccountType.PHARMACY_OWNER)
   findPharmacySubscriptions(
     @Param('pharmacyId', ParseIntPipe)
     pharmacyId: number,
