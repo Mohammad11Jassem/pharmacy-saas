@@ -20,6 +20,7 @@ import { BatchService } from '../batch/batch.service';
 import { AddBatchesToSupplierInvoiceDto } from '../batch/dto/add-batches-to-supplier-invoice.dto';
 import { Auth } from '../../iam/authentication/decorators/auth.decorator';
 import { AuthType } from '../../iam/authentication/enums/auth-type.enum';
+import { LogInvoiceActivity } from '../invoice-activity/decorators/log-invoice-activity.decorator';
 
 @Controller('supplier-invoice')
 export class SupplierInvoiceController {
@@ -28,6 +29,7 @@ export class SupplierInvoiceController {
     private readonly batchService: BatchService,
   ) {}
 
+  @LogInvoiceActivity('تم إنشاء فاتورة شراء')
   @Post('create')
   create(
     @CurrentPharmacy() pharmacyId: number,

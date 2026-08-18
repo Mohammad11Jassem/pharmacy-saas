@@ -665,6 +665,7 @@ model Batch {
 
   @@index([pharmacyDrugId])
   @@index([supplierInvoiceItemId])
+  @@index([status, expiryDate])
   @@map("batches")
 }
 

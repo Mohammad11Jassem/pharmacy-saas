@@ -24,7 +24,6 @@ import { LogInvoiceActivity } from '../invoice-activity/decorators/log-invoice-a
 @Controller('batch')
 export class BatchController {
   constructor(private readonly batchService: BatchService) {}
-  @LogInvoiceActivity('تم إنشاء فاتورة شراء')
   @Post()
   create(@Body() createBatchDto: CreateSupplierInvoiceItemBatchDto) {
     return this.batchService.create(createBatchDto);
