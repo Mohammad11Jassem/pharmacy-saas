@@ -1207,15 +1207,12 @@ export class SmartSuggestionsRepository {
           *
           * = 10 علب كاملة
           */
-          CASE
-            WHEN projected_stock >= 0
-              THEN FLOOR(
-                projected_stock::numeric
-                /
-                units_per_box
-              )::int
-            ELSE 0
-          END AS "projectedFullBoxes",
+          FLOOR(
+            ABS(projected_stock)::numeric
+            /
+            units_per_box
+          )::int
+            AS "projectedFullBoxes",
 
           /*
           * الفرط المتبقي من المخزون المتوقع.
@@ -1223,14 +1220,11 @@ export class SmartSuggestionsRepository {
           * مثال:
           * 260 % 24 = 20
           */
-          CASE
-            WHEN projected_stock >= 0
-              THEN MOD(
-                projected_stock,
-                units_per_box
-              )::int
-            ELSE 0
-          END AS "projectedLooseUnits",
+          MOD(
+          ABS(projected_stock),
+          units_per_box
+        )::int
+          AS "projectedLooseUnits",
 
         /*
          * الحد الآمن بالـ Base Units.
