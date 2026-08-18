@@ -40,6 +40,15 @@ export type SmartSuggestion = {
    * - pendingCustomerDemand
    */
   projectedStock: number;
+  /**
+   * عدد العلب الكاملة ضمن المخزون المتوقع.
+   */
+  projectedFullBoxes: number;
+
+  /**
+   * عدد الوحدات المتبقية بعد العلب الكاملة.
+   */
+  projectedLooseUnits: number;
 
   /**
    * الحد الآمن للمخزون.

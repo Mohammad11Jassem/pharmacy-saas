@@ -1198,7 +1198,39 @@ export class SmartSuggestionsRepository {
          */
         projected_stock
           AS "projectedStock",
+          /*
+          * عدد العلب الكاملة في المخزون المتوقع.
+          *
+          * مثال:
+          * projectedStock = 260
+          * unitsPerBox = 24
+          *
+          * = 10 علب كاملة
+          */
+          CASE
+            WHEN projected_stock >= 0
+              THEN FLOOR(
+                projected_stock::numeric
+                /
+                units_per_box
+              )::int
+            ELSE 0
+          END AS "projectedFullBoxes",
 
+          /*
+          * الفرط المتبقي من المخزون المتوقع.
+          *
+          * مثال:
+          * 260 % 24 = 20
+          */
+          CASE
+            WHEN projected_stock >= 0
+              THEN MOD(
+                projected_stock,
+                units_per_box
+              )::int
+            ELSE 0
+          END AS "projectedLooseUnits",
 
         /*
          * الحد الآمن بالـ Base Units.
