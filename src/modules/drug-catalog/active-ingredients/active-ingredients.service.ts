@@ -8,7 +8,10 @@ import {
   CreateActiveIngredientDto,
   UpdateActiveIngredientDto,
 } from '../dto/active-ingredient.dto';
-import { getPaginationParams, toPaginatedResult } from '../../../common/pagination/pagination.util';
+import {
+  getPaginationParams,
+  toPaginatedResult,
+} from '../../../common/pagination/pagination.util';
 import { SearchActiveIngredientsQueryDto } from '../dto/search-active-ingredients-query.dto';
 
 @Injectable()
@@ -32,12 +35,35 @@ export class ActiveIngredientsService {
     }
   }
 
-  async findAll() {
-    return this.prisma.activeIngredient.findMany({
-      orderBy: {
-        ingredientName: 'asc',
-      },
-    });
+  async findAll(page: number, limit: number) {
+    const skip = (page - 1) * limit;
+
+    const [activeIngredients, total] = await Promise.all([
+      this.prisma.activeIngredient.findMany({
+        skip,
+        take: limit,
+
+        orderBy: {
+          ingredientName: 'asc',
+        },
+      }),
+
+      this.prisma.activeIngredient.count(),
+    ]);
+
+    const pages = Math.ceil(total / limit);
+    const hasNextPage = page < pages;
+    const hasPreviousPage = page > 1;
+
+    return {
+      data: activeIngredients,
+      page,
+      limit,
+      total,
+      pages,
+      hasNextPage,
+      hasPreviousPage,
+    };
   }
 
   async findOne(id: number) {

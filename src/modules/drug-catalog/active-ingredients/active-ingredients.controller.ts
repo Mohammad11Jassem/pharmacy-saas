@@ -35,8 +35,11 @@ export class ActiveIngredientsController {
 
   @Roles(AccountType.ADMIN, AccountType.MEDICAL_TEAM, AccountType.PHARMACY)
   @Get()
-  async findAll() {
-    return await this.activeIngredientsService.findAll();
+  async findAll(@Query('page') page?: string, @Query('limit') limit?: string) {
+    return this.activeIngredientsService.findAll(
+      parseInt(page || '1', 10),
+      parseInt(limit || '10', 10),
+    );
   }
 
   @Roles(AccountType.ADMIN, AccountType.MEDICAL_TEAM, AccountType.PHARMACY)

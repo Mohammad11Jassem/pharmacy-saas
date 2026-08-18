@@ -25,7 +25,7 @@ export class DosageFormsController {
   constructor(private readonly dosageFormsService: DosageFormsService) {}
 
   @Post()
- async create(@Body() dto: CreateDosageFormDto) {
+  async create(@Body() dto: CreateDosageFormDto) {
     return await this.dosageFormsService.create(dto);
   }
 
@@ -34,10 +34,12 @@ export class DosageFormsController {
   async findAll(
     @Query('page') page?: string,
     @Query('limit') limit?: string,
+    @Query('search') search?: string,
   ) {
-    return await this.dosageFormsService.findAll(
+    return this.dosageFormsService.findAll(
       parseInt(page || '1', 10),
       parseInt(limit || '10', 10),
+      search,
     );
   }
 

@@ -30,22 +30,33 @@ export class DosageFormsService {
     }
   }
 
-  async findAll(
-    page: number,
-    limit: number
-  ) {
+  async findAll(page: number, limit: number, search?: string) {
     const skip = (page - 1) * limit;
+
+    const where = search
+      ? {
+          dosageFormName: {
+            contains: search,
+            mode: 'insensitive' as const,
+          },
+        }
+      : {};
 
     const [dosageForms, total] = await Promise.all([
       this.prisma.dosageForm.findMany({
+        where,
         skip,
         take: limit,
         orderBy: {
           dosageFormName: 'asc',
         },
       }),
-      this.prisma.dosageForm.count(),
+
+      this.prisma.dosageForm.count({
+        where,
+      }),
     ]);
+
     const pages = Math.ceil(total / limit);
     const hasNextPage = page < pages;
     const hasPreviousPage = page > 1;
