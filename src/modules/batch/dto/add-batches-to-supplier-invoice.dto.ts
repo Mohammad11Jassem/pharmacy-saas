@@ -4,6 +4,7 @@ import {
   IsDateString,
   IsInt,
   IsOptional,
+  IsString,
   Min,
   ValidateNested,
 } from 'class-validator';
@@ -12,9 +13,14 @@ export class AddSupplierInvoiceBatchItemDto {
   @IsInt()
   supplierInvoiceItemId: number;
 
+  //يجب تغيير الحقل من initialQuantity إلى boxQuantity
   @IsInt()
   @Min(1)
   initialQuantity: number;
+
+  @IsOptional()
+  @IsString()
+  batchNumber?: string;
 
   @IsOptional()
   @IsDateString()

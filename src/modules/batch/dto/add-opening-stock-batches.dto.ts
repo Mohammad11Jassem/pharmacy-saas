@@ -33,9 +33,9 @@ export class OpeningStockBatchItemDto {
   @IsDateString()
   receivedDate?: string;
 
-  @IsOptional()
-  @IsString()
-  notes?: string;
+  // @IsOptional()
+  // @IsString()
+  // notes?: string;
 }
 
 export class AddOpeningStockBatchesDto {

@@ -123,10 +123,45 @@ export class SupplierService {
     }
   }
 
-  async remove(id: number, pharmacyId: number) {
-    await this.findOne(id, pharmacyId); // Ensure supplier exists and belongs to the pharmacy
-    await this.prisma.supplier.delete({ where: { supplierId: id } });
-    return { message: 'Supplier deleted successfully' };
+  // async remove(id: number, pharmacyId: number) {
+  //   await this.findOne(id, pharmacyId); // Ensure supplier exists and belongs to the pharmacy
+  //   await this.prisma.supplier.delete({ where: { supplierId: id } });
+  //   return { message: 'Supplier deleted successfully' };
+  // }
+  async remove(pharmacyId: number, supplierId: number) {
+    const supplier = await this.prisma.supplier.findFirst({
+      where: {
+        supplierId,
+        pharmacyId,
+      },
+
+      select: {
+        supplierId: true,
+
+        _count: {
+          select: {
+            invoices: true,
+            purchaseOrders: true,
+          },
+        },
+      },
+    });
+
+    if (!supplier) {
+      throw new NotFoundException('Supplier not found');
+    }
+
+    if (supplier._count.invoices > 0 || supplier._count.purchaseOrders > 0) {
+      throw new ConflictException(
+        'Supplier cannot be deleted because it has purchase history',
+      );
+    }
+
+    return this.prisma.supplier.delete({
+      where: {
+        supplierId,
+      },
+    });
   }
 
   private async ensurePharmacyExists(pharmacyId: number) {
