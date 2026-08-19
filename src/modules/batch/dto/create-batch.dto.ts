@@ -18,9 +18,8 @@ export class CreateSupplierInvoiceItemBatchDto {
   @IsDateString()
   expiryDate?: string;
 
-  @IsOptional()
   @Type(() => Number)
   @IsInt()
-  @Min(0)
-  initialQuantity?: number;
+  @Min(1)
+  initialQuantity: number;
 }

@@ -20,6 +20,16 @@ type SupplierInvoiceForStocking = Prisma.SupplierInvoiceGetPayload<{
     items: {
       include: {
         batches: true;
+        pharmacyDrug: {
+          include: {
+            drug: {
+              include: {
+                generalDrug: true;
+                privateDrug: true;
+              };
+            };
+          };
+        };
       };
     };
   };
@@ -41,6 +51,10 @@ type SupplierInvoiceItemForStocking =
   SupplierInvoiceForStocking['items'][number];
 
 type InvoiceItemsById = Map<number, SupplierInvoiceItemForStocking>;
+
+type LockedSupplierInvoiceRow = {
+  supplierInvoiceId: number;
+};
 
 type OpeningStockBatch = Prisma.BatchGetPayload<{
   include: {
@@ -80,6 +94,22 @@ export class BatchService {
     this.validateBatchesPayload(dto.batches);
 
     return this.prisma.$transaction(async (tx) => {
+      /**
+       * Lock the supplier invoice first.
+       *
+       * Any concurrent stocking request for the same invoice
+       * must wait until this transaction finishes.
+       */
+      await this.lockSupplierInvoiceForStocking(
+        tx,
+        pharmacyId,
+        supplierInvoiceId,
+      );
+      /**
+       * Important:
+       * Read the invoice AFTER acquiring the lock,
+       * so batches and remaining quantities are fresh.
+       */
       const invoice = await this.findSupplierInvoiceForStockingOrThrow(
         tx,
         pharmacyId,
@@ -120,107 +150,6 @@ export class BatchService {
       });
     });
   }
-
-  // async findByPharmacyDrug(
-  //   pharmacyId: number,
-  //   pharmacyDrugId: number,
-  //   query: GetPharmacyDrugBatchesQueryDto,
-  // ) {
-  //   const { fromDate, toDate, supplierId } = query;
-
-  //   const { page, limit, skip, take } = getPaginationParams(
-  //     query.page,
-  //     query.limit,
-  //   );
-
-  //   if (
-  //     fromDate &&
-  //     toDate &&
-  //     new Date(`${fromDate}T00:00:00.000Z`) >
-  //       new Date(`${toDate}T00:00:00.000Z`)
-  //   ) {
-  //     throw new BadRequestException(
-  //       'fromDate must be before or equal to toDate',
-  //     );
-  //   }
-  //   const where: Prisma.BatchWhereInput = {
-  //     pharmacyDrugId,
-
-  //     // ضمان أن الدواء تابع للصيدلية المسجلة حالياً.
-  //     pharmacyDrug: {
-  //       pharmacyId,
-  //     },
-
-  //     ...(fromDate || toDate
-  //       ? {
-  //           expiryDate: {
-  //             ...(fromDate
-  //               ? {
-  //                   gte: new Date(`${fromDate}T00:00:00.000Z`),
-  //                 }
-  //               : {}),
-
-  //             ...(toDate
-  //               ? {
-  //                   lte: new Date(`${toDate}T00:00:00.000Z`),
-  //                 }
-  //               : {}),
-  //           },
-  //         }
-  //       : {}),
-
-  //     /**
-  //      * Batch
-  //      *   -> SupplierInvoiceItem
-  //      *   -> SupplierInvoice
-  //      *   -> Supplier
-  //      */
-  //     ...(supplierId
-  //       ? {
-  //           supplierInvoiceItem: {
-  //             is: {
-  //               supplierInvoice: {
-  //                 supplierId,
-
-  //                 // ضمان أن المورد تابع للصيدلية الحالية.
-  //                 supplier: {
-  //                   pharmacyId,
-  //                 },
-  //               },
-  //             },
-  //           },
-  //         }
-  //       : {}),
-  //   };
-
-  //   const [batches, total] = await this.prisma.$transaction([
-  //     this.prisma.batch.findMany({
-  //       where,
-  //       skip,
-  //       take,
-
-  //       include: {
-  //         pharmacyDrug: true,
-
-  //         supplierInvoiceItem: {
-  //           include: {
-  //             supplierInvoice: true,
-  //           },
-  //         },
-  //       },
-
-  //       orderBy: {
-  //         createdAt: 'desc',
-  //       },
-  //     }),
-
-  //     this.prisma.batch.count({
-  //       where,
-  //     }),
-  //   ]);
-
-  //   return toPaginatedResult(batches, total, page, limit);
-  // }
 
   async findByPharmacyDrug(
     pharmacyId: number,
@@ -384,18 +313,22 @@ export class BatchService {
       const createdBatches: OpeningStockBatch[] = [];
 
       for (const batchDto of dto.batches) {
+        const receivedDate = batchDto.receivedDate
+          ? new Date(batchDto.receivedDate)
+          : new Date();
+
+        this.validateBatchExpiryDate(batchDto.expiryDate, receivedDate);
         const createdBatch = await tx.batch.create({
           data: {
             pharmacyDrugId: batchDto.pharmacyDrugId,
             supplierInvoiceItemId: null,
+            batchNumber: batchDto.batchNumber?.trim() || null,
             initialQuantity: batchDto.initialQuantity,
             soldQuantity: 0,
             expiryDate: batchDto.expiryDate
               ? new Date(batchDto.expiryDate)
               : undefined,
-            receivedDate: batchDto.receivedDate
-              ? new Date(batchDto.receivedDate)
-              : new Date(),
+            receivedDate,
           },
           include: {
             pharmacyDrug: true,
@@ -415,12 +348,38 @@ export class BatchService {
     }
   }
 
+  private async lockSupplierInvoiceForStocking(
+    tx: Prisma.TransactionClient,
+    pharmacyId: number,
+    supplierInvoiceId: number,
+  ): Promise<void> {
+    const lockedRows = await tx.$queryRaw<LockedSupplierInvoiceRow[]>(
+      Prisma.sql`
+      SELECT
+        si."supplier_invoice_id" AS "supplierInvoiceId"
+      FROM "supplier_invoices" si
+      INNER JOIN "suppliers" s
+        ON s."supplier_id" = si."supplier_id"
+      WHERE
+        si."supplier_invoice_id" = ${supplierInvoiceId}
+        AND s."pharmacy_id" = ${pharmacyId}
+      FOR UPDATE OF si
+    `,
+    );
+
+    if (lockedRows.length !== 1) {
+      throw new NotFoundException(
+        'Supplier invoice not found for this pharmacy',
+      );
+    }
+  }
+
   private async findSupplierInvoiceForStockingOrThrow(
     tx: Prisma.TransactionClient,
     pharmacyId: number,
     supplierInvoiceId: number,
   ): Promise<SupplierInvoiceForStocking> {
-    const invoice = await tx.supplierInvoice.findFirst({
+    const invoice = await tx.supplierInvoice.findUnique({
       where: {
         supplierInvoiceId,
         supplier: {
@@ -431,6 +390,17 @@ export class BatchService {
         items: {
           include: {
             batches: true,
+
+            pharmacyDrug: {
+              include: {
+                drug: {
+                  include: {
+                    generalDrug: true,
+                    privateDrug: true,
+                  },
+                },
+              },
+            },
           },
         },
       },
@@ -491,7 +461,7 @@ export class BatchService {
     dto: AddBatchesToSupplierInvoiceDto,
     invoiceItemsById: InvoiceItemsById,
   ): void {
-    const requestedQuantityByItem = new Map<number, number>();
+    const requestedBaseQuantityByItem = new Map<number, number>();
 
     for (const batchDto of dto.batches) {
       if (batchDto.initialQuantity <= 0) {
@@ -508,17 +478,39 @@ export class BatchService {
         );
       }
 
-      requestedQuantityByItem.set(
+      const drug = invoiceItem.pharmacyDrug.drug;
+
+      const unitsPerBox = Number(
+        drug.source === 'GENERAL'
+          ? drug.generalDrug?.unitsPerBox
+          : drug.privateDrug?.unitsPerBox,
+      );
+
+      if (
+        !Number.isFinite(unitsPerBox) ||
+        !Number.isInteger(unitsPerBox) ||
+        unitsPerBox <= 0
+      ) {
+        throw new BadRequestException(
+          `Invalid unitsPerBox for pharmacyDrugId ${invoiceItem.pharmacyDrugId}`,
+        );
+      }
+
+      // كمية الـ Batch القادمة من الـ API هي عدد علب.
+      // نحولها إلى أصغر وحدة قبل المقارنة مع كمية الفاتورة.
+      const requestedBaseQuantity = batchDto.initialQuantity * unitsPerBox;
+
+      requestedBaseQuantityByItem.set(
         batchDto.supplierInvoiceItemId,
-        (requestedQuantityByItem.get(batchDto.supplierInvoiceItemId) ?? 0) +
-          batchDto.initialQuantity,
+        (requestedBaseQuantityByItem.get(batchDto.supplierInvoiceItemId) ?? 0) +
+          requestedBaseQuantity,
       );
     }
 
     for (const [
       supplierInvoiceItemId,
-      requestedQuantity,
-    ] of requestedQuantityByItem) {
+      requestedBaseQuantity,
+    ] of requestedBaseQuantityByItem) {
       const invoiceItem = invoiceItemsById.get(supplierInvoiceItemId);
 
       if (!invoiceItem) {
@@ -527,14 +519,18 @@ export class BatchService {
         );
       }
 
-      const alreadyBatchedQuantity = invoiceItem.batches.reduce(
+      // هذه أصلًا مخزنة بالـ base units.
+      const alreadyBatchedBaseQuantity = invoiceItem.batches.reduce(
         (sum, batch) => sum + batch.initialQuantity,
         0,
       );
 
-      if (alreadyBatchedQuantity + requestedQuantity > invoiceItem.quantity) {
+      const remainingBaseQuantity =
+        invoiceItem.quantity - alreadyBatchedBaseQuantity;
+
+      if (requestedBaseQuantity > remainingBaseQuantity) {
         throw new BadRequestException(
-          `Batch quantity exceeds invoice item quantity for item ${supplierInvoiceItemId}`,
+          `Batch quantity exceeds remaining invoice quantity for item ${supplierInvoiceItemId}`,
         );
       }
     }
@@ -555,15 +551,49 @@ export class BatchService {
         );
       }
 
+      const drug = invoiceItem.pharmacyDrug.drug;
+
+      const unitsPerBox = Number(
+        drug.source === 'GENERAL'
+          ? drug.generalDrug?.unitsPerBox
+          : drug.privateDrug?.unitsPerBox,
+      );
+
+      if (
+        !Number.isFinite(unitsPerBox) ||
+        !Number.isInteger(unitsPerBox) ||
+        unitsPerBox <= 0
+      ) {
+        throw new BadRequestException(
+          `Invalid unitsPerBox for pharmacyDrugId ${invoiceItem.pharmacyDrugId}`,
+        );
+      }
+
+      // API quantity = boxes
+      // DB quantity = base units
+      const batchBaseQuantity = batchDto.initialQuantity * unitsPerBox;
+
+      const receivedDate = new Date();
+
+      this.validateBatchExpiryDate(batchDto.expiryDate, receivedDate);
+
       await tx.batch.create({
         data: {
           pharmacyDrugId: invoiceItem.pharmacyDrugId,
+
           supplierInvoiceItemId: invoiceItem.supplierInvoiceItemId,
-          initialQuantity: batchDto.initialQuantity,
+
+          batchNumber: batchDto.batchNumber?.trim() || null,
+
+          initialQuantity: batchBaseQuantity,
+
+          soldQuantity: 0,
+
           expiryDate: batchDto.expiryDate
             ? new Date(batchDto.expiryDate)
             : undefined,
-          receivedDate: invoice.invoiceDate,
+
+          receivedDate,
         },
       });
     }
@@ -637,5 +667,35 @@ export class BatchService {
     }
 
     return SupplierInvoiceStatus.PENDING;
+  }
+  private validateBatchExpiryDate(
+    expiryDate?: string,
+    receivedDate: Date = new Date(),
+  ): void {
+    if (!expiryDate) {
+      return;
+    }
+
+    const expiry = new Date(expiryDate);
+
+    if (Number.isNaN(expiry.getTime())) {
+      throw new BadRequestException('Invalid expiryDate');
+    }
+
+    const expiryOnly = new Date(
+      expiry.getFullYear(),
+      expiry.getMonth(),
+      expiry.getDate(),
+    );
+
+    const receivedOnly = new Date(
+      receivedDate.getFullYear(),
+      receivedDate.getMonth(),
+      receivedDate.getDate(),
+    );
+
+    if (expiryOnly < receivedOnly) {
+      throw new BadRequestException('expiryDate cannot be before receivedDate');
+    }
   }
 }

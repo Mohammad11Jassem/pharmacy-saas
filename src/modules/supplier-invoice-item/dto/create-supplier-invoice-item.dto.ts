@@ -11,32 +11,6 @@ import {
   IsArray,
 } from 'class-validator';
 import { CreateSupplierInvoiceItemBatchDto } from '../../batch/dto/create-batch.dto';
-
-// export class CreateSupplierInvoiceItemDto {
-//   @IsInt()
-//   pharmacyDrugId: number;
-
-//   @IsInt()
-//   @Min(1)
-//   quantityBoxes: number;
-
-//   @IsInt()
-//   @Min(0)
-//   unitPrice: number;
-
-//   @IsOptional()
-//   @IsString()
-//   batchNumber?: string;
-
-//   @IsOptional()
-//   @IsDateString()
-//   expiryDate?: string;
-
-//   @IsOptional()
-//   @IsString()
-//   notes?: string;
-// }
-
 export class CreateSupplierInvoiceItemDto {
   @IsInt()
   @Min(1)

@@ -30,6 +30,7 @@ export class SupplierInvoiceController {
   ) {}
 
   @LogInvoiceActivity('تم إنشاء فاتورة شراء')
+  @Roles(AccountType.PHARMACY)
   @Post('create')
   create(
     @CurrentPharmacy() pharmacyId: number,
