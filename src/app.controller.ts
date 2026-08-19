@@ -1,13 +1,37 @@
-import { Controller, Get, HttpException, HttpStatus, Post } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Get,
+  HttpException,
+  HttpStatus,
+  Post,
+} from '@nestjs/common';
 import { AppService } from './app.service';
 import { Auth } from './iam/authentication/decorators/auth.decorator';
 import { AuthType } from './iam/authentication/enums/auth-type.enum';
+import { NotificationService } from './notification/notification.service';
+import { NotificationUseCase } from './notification/notification.use-case';
+import { getMessaging } from 'firebase-admin/messaging';
 @Controller()
 export class AppController {
-  constructor(private readonly appService: AppService) {}
+  constructor(private readonly appService: AppService ) {}
   private readonly ragUrl =
     'https://44d5-185-100-234-183.ngrok-free.app/rag-test/ask';
 
+
+  @Auth(AuthType.None)  
+  @Post('test-firebase-notification')
+  async testFirebaseNotification(@Body('fcmToken') fcmToken: string) {
+    console.log('Received FCM Token:', fcmToken);
+    await getMessaging().send({
+          token: fcmToken,
+    
+          notification: {
+            title: "اختبار إشعار Firebase",
+            body: "اختبار إشعار Firebase من MediXa.",
+          },
+        });
+  }
   @Auth(AuthType.None)
   @Get('health-check')
   getHello(): string {

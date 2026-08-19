@@ -1208,7 +1208,7 @@ export class SmartSuggestionsRepository {
           * = 10 علب كاملة
           */
           FLOOR(
-            ABS(projected_stock)::numeric
+            projected_stock::numeric
             /
             units_per_box
           )::int
@@ -1221,7 +1221,7 @@ export class SmartSuggestionsRepository {
           * 260 % 24 = 20
           */
           MOD(
-          ABS(projected_stock),
+          projected_stock,
           units_per_box
         )::int
           AS "projectedLooseUnits",

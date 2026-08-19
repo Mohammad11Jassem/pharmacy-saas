@@ -85,7 +85,7 @@ export function mapPharmacyDrug(pharmacyDrug: ListPharmacyDrugPayload) {
 
   const dosageForm = drugInfo?.dosageForm ?? null;
   const unitsPerBox = drugInfo?.unitsPerBox ?? null;
-
+  
   return {
     pharmacyDrugId: pharmacyDrug.pharmacyDrugId,
     drugId: pharmacyDrug.drugId,
@@ -135,7 +135,8 @@ export function mapPharmacyDrug(pharmacyDrug: ListPharmacyDrugPayload) {
       isActive: pharmacyDrug.isActive,
       notes: pharmacyDrug.notes,
     },
-
+    
+    
     stock: {
       availableQuantity: unitsPerBox
         ? Math.floor(availableQuantity / unitsPerBox)

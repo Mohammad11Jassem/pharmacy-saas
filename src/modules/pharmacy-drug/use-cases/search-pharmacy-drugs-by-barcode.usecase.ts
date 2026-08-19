@@ -32,7 +32,7 @@ export class SearchPharmacyDrugsByBarcodeUseCase {
         this.prisma.pharmacyDrug.findFirst({
           where: {
             pharmacyId,
-
+            isActive:true,
             OR: [
               {
                 drug: {

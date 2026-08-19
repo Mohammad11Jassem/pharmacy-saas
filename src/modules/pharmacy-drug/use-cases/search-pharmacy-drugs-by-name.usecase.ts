@@ -38,7 +38,7 @@ export class SearchPharmacyDrugsByNameUseCase {
 
     const pharmacyDrugWhere: Prisma.PharmacyDrugWhereInput = {
       pharmacyId,
-
+      isActive: true,
       OR: [
         {
           drug: {

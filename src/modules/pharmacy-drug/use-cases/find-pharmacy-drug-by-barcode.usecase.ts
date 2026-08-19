@@ -19,6 +19,7 @@ export class FindPharmacyDrugByBarcodeUseCase {
     const pharmacyDrug = await this.prisma.pharmacyDrug.findFirst({
       where: {
         pharmacyId,
+        isActive: true,
         OR: [
           {
             drug: {
