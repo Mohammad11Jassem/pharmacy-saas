@@ -200,11 +200,13 @@ export function mapAlternativeCandidateResponse(
     stock: {
       availableBaseQuantity: alternative.availableBaseQuantity,
       availableFullBoxes:
-        alternative.unitsPerBox > 0
-          ? Math.floor(
+      alternative.unitsPerBox > 0
+      ? Math.floor(
               alternative.availableBaseQuantity / alternative.unitsPerBox,
             )
-          : 0,
+            : 0,
+            
+            availableIndividualUnits: alternative.availableBaseQuantity % alternative.unitsPerBox,
       isAvailable: alternative.availableBaseQuantity > 0,
     },
   };
