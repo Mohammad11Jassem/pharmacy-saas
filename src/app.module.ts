@@ -1,6 +1,6 @@
 import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
-import { APP_FILTER, APP_INTERCEPTOR } from '@nestjs/core';
+import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformResponseInterceptor } from './common/interceptors/transform-response.interceptor';
 import { CodeGenerationModule } from './common/code-generation/code-generation.module';
@@ -41,11 +41,20 @@ import { SubscriptionPaymentModule } from './modules/subscription-payment/subscr
 import { GeneralDrugPriceListModule } from './modules/general-drug-price-list/general-drug-price-list.module';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { NotificationModule } from './notification/notification.module';
+import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
+import { RequestLoggerInterceptor } from './common/interceptors/request-logger.interceptor';
 @Module({
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
     }),
+
+    ThrottlerModule.forRoot([
+      {
+        ttl: 60000,
+        limit: 100,
+      },
+    ]),
     // AppModule,
     PrismaModule,
     UsersModule,
@@ -116,12 +125,20 @@ import { NotificationModule } from './notification/notification.module';
   ],
   providers: [
     {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
+    {
       provide: APP_INTERCEPTOR,
       useClass: TransformResponseInterceptor,
     },
     {
       provide: APP_FILTER,
       useClass: HttpExceptionFilter,
+    },
+    {
+      provide: APP_INTERCEPTOR,
+      useClass: RequestLoggerInterceptor,
     },
     AppService,
   ],

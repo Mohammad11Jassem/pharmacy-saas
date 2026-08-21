@@ -25,6 +25,7 @@ import { AllowPharmacyStatuses } from '../authorization/decorators/allow-pharmac
 import { AccountType, PharmacyStatus } from '../../generated/prisma/enums';
 import { Roles } from '../authorization/decorators/roles.decorator';
 import { SkipPharmacyStatusCheck } from '../authorization/decorators/skip-pharmacy-status-check.decorator';
+import { Throttle } from '@nestjs/throttler';
 
 @Controller('authentication')
 export class AuthenticationController {
@@ -94,6 +95,12 @@ export class AuthenticationController {
     return this.authenticationService.pharmacyFirstRegister(dto);
   }
 
+  @Throttle({
+  default: {
+    limit: 5,
+    ttl: 60000,
+  },
+})
   @Auth(AuthType.None)
   @HttpCode(HttpStatus.OK)
   @Post('pharmacies/sign-in')

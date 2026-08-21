@@ -19,10 +19,14 @@ import {
   getPaginationParams,
   toPaginatedResult,
 } from '../../common/pagination/pagination.util';
+import { PurchaseOrderExcelService } from './excel/purchase-order-excel.service';
 
 @Injectable()
 export class PurchaseOrderService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private excelService: PurchaseOrderExcelService,
+  ) {}
 
   async create(pharmacyId: number, dto: CreatePurchaseOrderDto) {
     /**
@@ -328,5 +332,47 @@ export class PurchaseOrderService {
     }
 
     return mapPurchaseOrderResponse(purchaseOrder);
+  }
+
+  async exportExcel(
+    pharmacyId: number,
+
+    purchaseOrderId: number,
+  ) {
+    const order = await this.prisma.purchaseOrder.findFirst({
+      where: {
+        purchaseOrderId,
+
+        pharmacyId,
+      },
+
+      include: {
+        pharmacy: true,
+
+        supplier: true,
+
+        items: {
+          include: {
+            pharmacyDrug: {
+              include: {
+                drug: {
+                  include: {
+                    generalDrug: true,
+
+                    privateDrug: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Purchase order not found');
+    }
+
+    return this.excelService.generate(order);
   }
 }

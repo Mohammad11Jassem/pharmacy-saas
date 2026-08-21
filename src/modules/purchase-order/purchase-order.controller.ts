@@ -9,6 +9,7 @@ import {
   Req,
   Query,
   ParseIntPipe,
+  Res,
 } from '@nestjs/common';
 import { PurchaseOrderService } from './purchase-order.service';
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
@@ -23,7 +24,7 @@ import { ActiveUser } from '../../iam/decorators/active-user.decorator';
 import { SmartSuggestionsService } from './smart-suggestions/smart-suggestions.service';
 import { Auth } from '../../iam/authentication/decorators/auth.decorator';
 import { AuthType } from '../../iam/authentication/enums/auth-type.enum';
-
+import { Response } from 'express';
 type RequestWithUser = Request & {
   user?: ActiveUserData;
 };
@@ -105,5 +106,33 @@ export class PurchaseOrderController {
     return {
       pharmacyId: req.user.sub,
     };
+  }
+
+  @Auth(AuthType.None)
+  @Get(':id/export-excel')
+  async exportExcel(
+    @Param('id')
+    id: number,
+
+    // @ActiveUser('sub')
+    // pharmacyId: number,
+
+    @Res()
+    res: Response,
+  ) {
+    const file = await this.purchaseOrderService.exportExcel(
+      1,
+
+      Number(id),
+    );
+
+    res.set({
+      'Content-Type':
+        'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+
+      'Content-Disposition': `attachment; filename=purchase-order-${id}.xlsx`,
+    });
+
+    res.send(file);
   }
 }
