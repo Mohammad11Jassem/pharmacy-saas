@@ -114,14 +114,14 @@ export class PurchaseOrderController {
     @Param('id')
     id: number,
 
-    // @ActiveUser('sub')
-    // pharmacyId: number,
+    @ActiveUser('sub')
+    pharmacyId: number,
 
     @Res()
     res: Response,
   ) {
     const file = await this.purchaseOrderService.exportExcel(
-      1,
+      pharmacyId,
 
       Number(id),
     );
