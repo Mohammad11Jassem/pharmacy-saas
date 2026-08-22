@@ -530,7 +530,7 @@ model GeneralDrug {
 
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
-
+  @@index( [tradeName(ops: raw("gist_trgm_ops"))], type: Gist, map: "general_drugs_trade_name_trgm_gist_idx")
   @@map("general_drugs")
 }
 
@@ -557,7 +557,7 @@ model PrivateDrug {
 
   ingredients PrivateDrugIngredient[]
   categories  PrivateDrugCategoryAssignment[]
-
+  @@index( [tradeName(ops: raw("gist_trgm_ops"))], type: Gist, map: "private_drugs_trade_name_trgm_gist_idx")
   @@map("private_drugs")
 }
 

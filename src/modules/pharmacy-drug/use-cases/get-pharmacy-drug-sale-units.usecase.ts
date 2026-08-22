@@ -41,6 +41,7 @@ export class GetPharmacyDrugSaleUnitsUseCase {
                 unitsPerBox: true,
                 consumerPrice: true,
                 netPrice: true,
+                isRx: true,
               },
             },
 
@@ -48,6 +49,7 @@ export class GetPharmacyDrugSaleUnitsUseCase {
               select: {
                 tradeName: true,
                 unitsPerBox: true,
+                isRx: true,
               },
             },
           },
@@ -78,6 +80,11 @@ export class GetPharmacyDrugSaleUnitsUseCase {
       pharmacyDrug.drug.source === DrugSource.GENERAL
         ? pharmacyDrug.drug.generalDrug?.unitsPerBox
         : pharmacyDrug.drug.privateDrug?.unitsPerBox;
+
+    const isRx =
+      pharmacyDrug.drug.source === DrugSource.GENERAL
+        ? (pharmacyDrug.drug.generalDrug?.isRx ?? false)
+        : (pharmacyDrug.drug.privateDrug?.isRx ?? false);
 
     if (!unitsPerBox || unitsPerBox <= 0) {
       throw new NotFoundException('Drug unitsPerBox is not configured');
@@ -118,6 +125,7 @@ export class GetPharmacyDrugSaleUnitsUseCase {
       baseUnit: UnitType.STRIP,
       unitsPerBox,
       sellPart: pharmacyDrug.sellPart,
+      isRx,
       availableBaseQuantity,
       saleUnits,
     };
