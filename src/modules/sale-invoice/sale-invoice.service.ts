@@ -6,6 +6,8 @@ import { GetSaleInvoicesDto } from './dto/get-sale-invoices.dto';
 import { FindAllSaleInvoicesUseCase } from './use-cases/find-all-sale-invoices.usecase';
 import { FindSaleInvoiceByIdUseCase } from './use-cases/find-sale-invoice-by-id.usecase';
 import { FindSaleInvoiceBatchesUseCase } from './use-cases/find-sale-invoice-batches.usecase';
+import { UpdateSaleInvoicePaymentUseCase } from './use-cases/update-sale-invoice-payment.usecase';
+import { UpdateSaleInvoicePaymentDto } from './dto/update-sale-invoice-payment.dto';
 
 @Injectable()
 export class SaleInvoiceService {
@@ -14,6 +16,7 @@ export class SaleInvoiceService {
     private readonly findAllSaleInvoicesUseCase: FindAllSaleInvoicesUseCase,
     private readonly findSaleInvoiceByIdUseCase: FindSaleInvoiceByIdUseCase,
     private readonly findSaleInvoiceBatchesUseCase: FindSaleInvoiceBatchesUseCase,
+    private readonly updateSaleInvoicePaymentUseCase: UpdateSaleInvoicePaymentUseCase,
   ) {}
   create(pharmacyId: number, dto: CreateSaleInvoiceDto) {
     return this.createSaleInvoiceUseCase.execute(pharmacyId, dto);
@@ -31,11 +34,15 @@ export class SaleInvoiceService {
       saleInvoiceId,
     );
   }
-  update(id: number, updateSaleInvoiceDto: UpdateSaleInvoiceDto) {
-    return `This action updates a #${id} saleInvoice`;
-  }
-
-  remove(id: number) {
-    return `This action removes a #${id} saleInvoice`;
+  updatePayment(
+    pharmacyId: number,
+    saleInvoiceId: number,
+    dto: UpdateSaleInvoicePaymentDto,
+  ) {
+    return this.updateSaleInvoicePaymentUseCase.execute(
+      pharmacyId,
+      saleInvoiceId,
+      dto,
+    );
   }
 }

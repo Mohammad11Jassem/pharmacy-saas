@@ -2,6 +2,7 @@ import {
   ArrayMaxSize,
   ArrayMinSize,
   IsArray,
+  IsNotEmpty,
   IsOptional,
   IsPhoneNumber,
   IsString,
@@ -14,6 +15,11 @@ import { Type } from 'class-transformer';
 import { CreateCustomerRequestItemDto } from '../../customer-request-item/dto/create-customer-request-item.dto';
 
 export class CreateCustomerRequestDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(150)
+  idempotencyKey: string;
+
   @IsString()
   @MaxLength(200)
   customerName: string;

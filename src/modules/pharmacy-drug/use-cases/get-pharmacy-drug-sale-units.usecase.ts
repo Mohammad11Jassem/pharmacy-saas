@@ -115,7 +115,8 @@ export class GetPharmacyDrugSaleUnitsUseCase {
         label: 'ظرف',
         unitFactorToBase: 1,
         suggestedUnitPrice: this.roundMoney(boxPrice / unitsPerBox),
-        availableDisplayQuantity: availableBaseQuantity,
+        // availableDisplayQuantity: availableBaseQuantity,
+        availableDisplayQuantity: unitsPerBox,
       });
     }
 

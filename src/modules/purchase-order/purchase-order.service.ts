@@ -6,7 +6,11 @@ import {
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
 import { CreatePurchaseOrderItemDto } from '../purchase-order-item/dto/create-purchase-order-item.dto';
-import { OrderStatus, Prisma } from '../../generated/prisma/client';
+import {
+  OrderStatus,
+  Prisma,
+  PurchaseOrderItemStatus,
+} from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PurchaseOrderFilterDto } from './dto/create-purchase-order-filter.dto';
 import {
@@ -29,6 +33,22 @@ export class PurchaseOrderService {
   ) {}
 
   async create(pharmacyId: number, dto: CreatePurchaseOrderDto) {
+    const idempotencyKey = dto.idempotencyKey.trim();
+
+    const existingOrder = await this.prisma.purchaseOrder.findFirst({
+      where: {
+        pharmacyId,
+        idempotencyKey,
+      },
+
+      include: {
+        items: true,
+      },
+    });
+
+    if (existingOrder) {
+      return existingOrder;
+    }
     /**
      * يجب أن يحتوي طلب المورد على دواء واحد على الأقل.
      */
@@ -71,65 +91,92 @@ export class PurchaseOrderService {
       }
     }
 
-    return this.prisma.$transaction(async (tx) => {
-      /**
-       * نتأكد بالتوازي من:
-       *
-       * 1. المورد يتبع للصيدلية.
-       * 2. جميع الأدوية تتبع للصيدلية.
-       */
-      await Promise.all([
-        this.assertSupplierBelongsToPharmacy(dto.supplierId, pharmacyId, tx),
+    try {
+      return this.prisma.$transaction(async (tx) => {
+        /**
+         * نتأكد بالتوازي من:
+         *
+         * 1. المورد يتبع للصيدلية.
+         * 2. جميع الأدوية تتبع للصيدلية.
+         */
+        await Promise.all([
+          this.assertSupplierBelongsToPharmacy(dto.supplierId, pharmacyId, tx),
 
-        this.assertDrugsBelongToPharmacy(dto.items, pharmacyId, tx),
-      ]);
+          this.assertDrugsBelongToPharmacy(dto.items, pharmacyId, tx),
+        ]);
 
-      /**
-       * إنشاء Purchase Order.
-       *
-       * orderStatus غير مرسل هنا،
-       * لذلك Prisma سيضع القيمة الافتراضية:
-       *
-       * PENDING
-       *
-       * أي أن الطلب يبدأ كمسودة.
-       */
-      return tx.purchaseOrder.create({
-        data: {
-          pharmacyId,
+        /**
+         * إنشاء Purchase Order.
+         *
+         * orderStatus غير مرسل هنا،
+         * لذلك Prisma سيضع القيمة الافتراضية:
+         *
+         * PENDING
+         *
+         * أي أن الطلب يبدأ كمسودة.
+         */
+        return tx.purchaseOrder.create({
+          data: {
+            pharmacyId,
 
-          supplierId: dto.supplierId,
+            supplierId: dto.supplierId,
 
-          notes: dto.notes,
+            idempotencyKey,
 
-          /**
-           * يمكن أن تكون:
-           *
-           * Date
-           * أو
-           * null
-           *
-           * لأن الحقل اختياري في الـ schema.
-           */
-          expectedReceiptDate,
+            notes: dto.notes,
 
-          items: {
-            create: dto.items.map((item) => ({
-              pharmacyDrugId: item.pharmacyDrugId,
+            /**
+             * يمكن أن تكون:
+             *
+             * Date
+             * أو
+             * null
+             *
+             * لأن الحقل اختياري في الـ schema.
+             */
+            expectedReceiptDate,
 
-              orderedQuantityBoxes: item.orderedQuantityBoxes,
+            items: {
+              create: dto.items.map((item) => ({
+                pharmacyDrugId: item.pharmacyDrugId,
 
-              notes: item.notes,
-            })),
+                orderedQuantityBoxes: item.orderedQuantityBoxes,
+
+                notes: item.notes,
+              })),
+            },
           },
-        },
 
-        include: {
-          items: true,
-        },
+          include: {
+            items: true,
+          },
+        });
       });
-    });
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        const existingOrder = await this.prisma.purchaseOrder.findFirst({
+          where: {
+            pharmacyId,
+            idempotencyKey,
+          },
+
+          include: {
+            items: true,
+          },
+        });
+
+        if (existingOrder) {
+          return existingOrder;
+        }
+      }
+
+      throw error;
+    }
   }
+
   private async assertSupplierBelongsToPharmacy(
     supplierId: number,
     pharmacyId: number,
@@ -168,96 +215,6 @@ export class PurchaseOrderService {
       );
     }
   }
-
-  // async findAll(pharmacyId: number, filters: PurchaseOrderFilterDto) {
-  //   const { supplierId, pharmacyDrugId } = filters;
-
-  //   return this.prisma.purchaseOrder.findMany({
-  //     where: {
-  //       pharmacyId,
-  //       ...(supplierId !== undefined ? { supplierId } : {}),
-  //       ...(pharmacyDrugId !== undefined
-  //         ? {
-  //             items: {
-  //               some: {
-  //                 pharmacyDrugId,
-  //               },
-  //             },
-  //           }
-  //         : {}),
-  //     },
-  //     include: {
-  //       supplier: true,
-  //       items: {
-  //         include: {
-  //           pharmacyDrug: true,
-  //         },
-  //       },
-  //     },
-  //     orderBy: {
-  //       createdAt: 'desc',
-  //     },
-  //   });
-  // }
-
-  // async findAll(pharmacyId: number, filters: PurchaseOrderFilterDto) {
-  //   const { supplierId, pharmacyDrugId } = filters;
-
-  //   const purchaseOrders = await this.prisma.purchaseOrder.findMany({
-  //     where: {
-  //       pharmacyId,
-
-  //       ...(supplierId !== undefined
-  //         ? {
-  //             supplierId,
-  //           }
-  //         : {}),
-
-  //       ...(pharmacyDrugId !== undefined
-  //         ? {
-  //             items: {
-  //               some: {
-  //                 pharmacyDrugId,
-  //               },
-  //             },
-  //           }
-  //         : {}),
-  //     },
-
-  //     // لا نجلب items، وإنما supplier وعدد items فقط.
-  //     include: purchaseOrderListInclude,
-
-  //     orderBy: {
-  //       createdAt: 'desc',
-  //     },
-  //   });
-
-  //   return purchaseOrders.map(mapPurchaseOrderListResponse);
-  // }
-
-  // async findOne(pharmacyId: number, id: number) {
-  //   const po = await this.prisma.purchaseOrder.findFirst({
-  //     where: {
-  //       purchaseOrderId: id,
-  //       pharmacyId,
-  //     },
-  //     include: {
-  //       supplier: true,
-  //       items: {
-  //         include: {
-  //           pharmacyDrug: {
-  //             include: {
-  //               drug: true, // اختياري: تفاصيل الـ drug إذا احتجت
-  //             },
-  //           },
-  //         },
-  //       },
-  //     },
-  //   });
-
-  //   if (!po) throw new NotFoundException('Purchase order not found');
-  //   return po;
-  // }
 
   async findAll(pharmacyId: number, filters: PurchaseOrderFilterDto) {
     const { supplierId, pharmacyDrugId } = filters;
@@ -313,6 +270,7 @@ export class PurchaseOrderService {
       limit,
     );
   }
+
   async findOne(pharmacyId: number, id: number) {
     const purchaseOrder = await this.prisma.purchaseOrder.findFirst({
       where: {
@@ -332,6 +290,191 @@ export class PurchaseOrderService {
     }
 
     return mapPurchaseOrderResponse(purchaseOrder);
+  }
+
+  async updateStatus(
+    pharmacyId: number,
+    purchaseOrderId: number,
+    status: OrderStatus,
+  ) {
+    const order = await this.prisma.purchaseOrder.findFirst({
+      where: {
+        purchaseOrderId,
+
+        pharmacyId,
+      },
+    });
+
+    if (!order) {
+      throw new NotFoundException('Purchase order not found');
+    }
+
+    this.validateOrderStatusTransition(order.orderStatus, status);
+
+    if (status === OrderStatus.RECEIVED) {
+      const canReceive = await this.canMarkOrderAsReceived(purchaseOrderId);
+
+      if (!canReceive) {
+        throw new BadRequestException(
+          'Cannot mark order as received before receiving all items',
+        );
+      }
+    }
+
+    return this.prisma.purchaseOrder.update({
+      where: {
+        purchaseOrderId,
+      },
+
+      data: {
+        orderStatus: status,
+      },
+    });
+  }
+
+  async updateItemStatus(
+    pharmacyId: number,
+    purchaseOrderId: number,
+    itemId: number,
+    status: PurchaseOrderItemStatus,
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const item = await tx.purchaseOrderItem.findFirst({
+        where: {
+          purchaseOrderItemId: itemId,
+
+          purchaseOrderId,
+
+          purchaseOrder: {
+            pharmacyId,
+          },
+        },
+      });
+
+      if (!item) {
+        throw new NotFoundException('Purchase order item not found');
+      }
+
+      this.validateItemStatusTransition(item.status, status);
+      const updatedItem = await tx.purchaseOrderItem.update({
+        where: {
+          purchaseOrderItemId: itemId,
+        },
+
+        data: {
+          status,
+        },
+      });
+
+      await this.syncPurchaseOrderStatus(purchaseOrderId, tx);
+
+      return updatedItem;
+    });
+  }
+
+  private async syncPurchaseOrderStatus(
+    purchaseOrderId: number,
+    tx: Prisma.TransactionClient,
+  ) {
+    const items = await tx.purchaseOrderItem.findMany({
+      where: {
+        purchaseOrderId,
+      },
+
+      select: {
+        status: true,
+      },
+    });
+
+    const allReceived =
+      items.length > 0 &&
+      items.every((item) => item.status === PurchaseOrderItemStatus.RECEIVED);
+
+    const allCancelled =
+      items.length > 0 &&
+      items.every((item) => item.status === PurchaseOrderItemStatus.CANCELLED);
+
+    if (allReceived) {
+      await tx.purchaseOrder.update({
+        where: {
+          purchaseOrderId,
+        },
+
+        data: {
+          orderStatus: OrderStatus.RECEIVED,
+        },
+      });
+    }
+
+    if (allCancelled) {
+      await tx.purchaseOrder.update({
+        where: {
+          purchaseOrderId,
+        },
+
+        data: {
+          orderStatus: OrderStatus.CANCELLED,
+        },
+      });
+    }
+  }
+
+  private async canMarkOrderAsReceived(purchaseOrderId: number) {
+    const pendingItems = await this.prisma.purchaseOrderItem.count({
+      where: {
+        purchaseOrderId,
+
+        status: {
+          not: PurchaseOrderItemStatus.RECEIVED,
+        },
+      },
+    });
+
+    return pendingItems === 0;
+  }
+
+  private validateOrderStatusTransition(
+    current: OrderStatus,
+    next: OrderStatus,
+  ) {
+    const allowed: Record<OrderStatus, OrderStatus[]> = {
+      PENDING: [OrderStatus.CONFIRMED, OrderStatus.CANCELLED],
+
+      CONFIRMED: [OrderStatus.RECEIVED, OrderStatus.CANCELLED],
+
+      RECEIVED: [],
+
+      CANCELLED: [],
+    };
+
+    if (!allowed[current].includes(next)) {
+      throw new BadRequestException(
+        `Cannot change status from ${current} to ${next}`,
+      );
+    }
+  }
+
+  private validateItemStatusTransition(
+    current: PurchaseOrderItemStatus,
+    next: PurchaseOrderItemStatus,
+  ) {
+    const allowed: Record<PurchaseOrderItemStatus, PurchaseOrderItemStatus[]> =
+      {
+        PENDING: [
+          PurchaseOrderItemStatus.RECEIVED,
+          PurchaseOrderItemStatus.CANCELLED,
+        ],
+
+        RECEIVED: [],
+
+        CANCELLED: [],
+      };
+
+    if (!allowed[current].includes(next)) {
+      throw new BadRequestException(
+        `Cannot change item status from ${current} to ${next}`,
+      );
+    }
   }
 
   async exportExcel(

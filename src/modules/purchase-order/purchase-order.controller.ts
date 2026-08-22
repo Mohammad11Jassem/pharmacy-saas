@@ -25,6 +25,9 @@ import { SmartSuggestionsService } from './smart-suggestions/smart-suggestions.s
 import { Auth } from '../../iam/authentication/decorators/auth.decorator';
 import { AuthType } from '../../iam/authentication/enums/auth-type.enum';
 import { Response } from 'express';
+import { UpdatePurchaseOrderItemStatusDto } from './dto/update-purchase-order-item-status.dto';
+import { UpdatePurchaseOrderStatusDto } from './dto/update-purchase-order-status.dto';
+
 type RequestWithUser = Request & {
   user?: ActiveUserData;
 };
@@ -134,5 +137,43 @@ export class PurchaseOrderController {
     });
 
     res.send(file);
+
+  }
+
+  @Patch(':id/status')
+  @Roles(AccountType.PHARMACY)
+  async updateStatus(
+    @CurrentPharmacy() pharmacyId: number,
+
+    @Param('id', ParseIntPipe)
+    id: number,
+
+    @Body()
+    dto: UpdatePurchaseOrderStatusDto,
+  ) {
+    return this.purchaseOrderService.updateStatus(pharmacyId, id, dto.status);
+  }
+
+  @Patch(':id/items/:itemId/status')
+  @Roles(AccountType.PHARMACY)
+  async updateItemStatus(
+    @CurrentPharmacy()
+    pharmacyId: number,
+    
+    @Param('id', ParseIntPipe)
+    purchaseOrderId: number,
+
+    @Param('itemId', ParseIntPipe)
+    itemId: number,
+
+    @Body()
+    dto: UpdatePurchaseOrderItemStatusDto,
+  ) {
+    return this.purchaseOrderService.updateItemStatus(
+      pharmacyId,
+      purchaseOrderId,
+      itemId,
+      dto.status,
+    );
   }
 }

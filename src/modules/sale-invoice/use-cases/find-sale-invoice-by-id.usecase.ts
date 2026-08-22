@@ -16,6 +16,7 @@ import {
   CustomerRequestItemExecutionSnapshot,
   mapSaleInvoiceDetailsFrontendResponse,
 } from '../mappers/sale-invoice-details-frontend.mapper';
+import { calculateSalePaymentSummary } from '../utils/sale-payment-summary.util';
 
 type ExecutionSourceItem = {
   saleInvoiceItemId: number;
@@ -27,143 +28,6 @@ type ExecutionSourceItem = {
 @Injectable()
 export class FindSaleInvoiceByIdUseCase {
   constructor(private readonly prisma: PrismaService) {}
-
-  // async execute(pharmacyId: number, saleInvoiceId: number) {
-  //   const saleInvoice = await this.prisma.saleInvoice.findFirst({
-  //     where: {
-  //       saleInvoiceId,
-  //       pharmacyInvoice: {
-  //         pharmacyId,
-  //         invoiceType: PharmacyInvoiceType.SALE,
-  //       },
-  //     },
-  //     include: {
-  //       pharmacyInvoice: {
-  //         include: {
-  //           patient: true,
-  //         },
-  //       },
-
-  //       customerRequest: {
-  //         select: {
-  //           customerRequestId: true,
-  //           customerName: true,
-  //           customerPhone: true,
-  //           notes: true,
-  //           status: true,
-  //           requestedAt: true,
-  //           completedAt: true,
-  //           cancelledAt: true,
-  //           createdAt: true,
-  //           updatedAt: true,
-  //         },
-  //       },
-  //       items: {
-  //         include: {
-  //           customerRequestItem: {
-  //             select: {
-  //               customerRequestItemId: true,
-  //               customerRequestId: true,
-  //               pharmacyDrugId: true,
-  //               requestedQuantity: true,
-  //               fulfilledQuantity: true,
-  //               status: true,
-  //               notes: true,
-  //               createdAt: true,
-  //               updatedAt: true,
-  //             },
-  //           },
-  //           pharmacyDrug: {
-  //             include: {
-  //               drug: {
-  //                 include: {
-  //                   generalDrug: {
-  //                     select: {
-  //                       tradeName: true,
-  //                     },
-  //                   },
-  //                   privateDrug: {
-  //                     select: {
-  //                       tradeName: true,
-  //                     },
-  //                   },
-  //                 },
-  //               },
-  //             },
-  //           },
-
-  //           // batchAllocations: {
-  //           //   include: {
-  //           //     batch: true,
-  //           //   },
-  //           // },
-  //         },
-  //         customerRequestItem: true,
-  //       },
-
-  //       // returns: {
-  //       //   include: {
-  //       //     pharmacyInvoice: true,
-  //       //     items: {
-  //       //       include: {
-  //       //         pharmacyDrug: true,
-  //       //         saleInvoiceItemBatch: {
-  //       //           include: {
-  //       //             batch: true,
-  //       //             saleInvoiceItem: true,
-  //       //           },
-  //       //         },
-  //       //       },
-  //       //     },
-  //       //   },
-  //       // },
-  //     },
-  //   });
-
-  //   if (!saleInvoice) {
-  //     throw new NotFoundException('Sale invoice not found');
-  //   }
-
-  //   const executionBySaleItemId =
-  //     await this.buildCustomerRequestExecutionBySaleItemId(
-  //       saleInvoice.customerRequestId,
-  //       saleInvoice.items,
-  //     );
-
-  //   return {
-  //     ...saleInvoice,
-
-  //     items: saleInvoice.items.map((item) => ({
-  //       ...item,
-
-  //       customerRequestExecution:
-  //         executionBySaleItemId.get(item.saleInvoiceItemId) ?? null,
-
-  //       /**
-  //        * لأننا لا نخزن displayQuantity في قاعدة البيانات.
-  //        * نحسبها من:
-  //        * baseQuantity / unitFactorToBase
-  //        */
-  //       displayQuantity:
-  //         item.unitFactorToBase > 0
-  //           ? item.baseQuantity / item.unitFactorToBase
-  //           : null,
-
-  //       // batchAllocations: item.batchAllocations.map((allocation) => ({
-  //       //   ...allocation,
-
-  //       //   /**
-  //       //    * هذا اختياري، فقط ليسهل على الواجهة فهم كمية كل allocation
-  //       //    * بالنسبة لوحدة السطر الأصلية.
-  //       //    */
-  //       //   displayQuantityFromThisBatch:
-  //       //     item.unitFactorToBase > 0
-  //       //       ? allocation.baseQuantity / item.unitFactorToBase
-  //       //       : null,
-  //       // })),
-  //     })),
-  //   };
-  // }
 
   async execute(pharmacyId: number, saleInvoiceId: number) {
     const saleInvoice = await this.prisma.saleInvoice.findFirst({
@@ -238,6 +102,16 @@ export class FindSaleInvoiceByIdUseCase {
             },
           },
         },
+        returns: {
+          where: {
+            pharmacyInvoice: {
+              status: PharmacyInvoiceStatus.POSTED,
+            },
+          },
+          select: {
+            subtotalRefund: true,
+          },
+        },
       },
     });
 
@@ -251,8 +125,17 @@ export class FindSaleInvoiceByIdUseCase {
         saleInvoice.items,
       );
 
+    const { returns, ...saleInvoiceFields } = saleInvoice;
+
+    const paymentSummary = calculateSalePaymentSummary(
+      saleInvoice.totalAmount,
+      saleInvoice.paidAmount,
+      returns.map((returnInvoice) => returnInvoice.subtotalRefund),
+    );
+
     return {
-      ...saleInvoice,
+      ...saleInvoiceFields,
+      ...paymentSummary,
 
       items: saleInvoice.items.map((item) => {
         /**

@@ -27,6 +27,16 @@ const saleInvoicePostingResultInclude = {
       },
     },
   },
+  returns: {
+    where: {
+      pharmacyInvoice: {
+        status: PharmacyInvoiceStatus.POSTED,
+      },
+    },
+    select: {
+      subtotalRefund: true,
+    },
+  },
 } satisfies Prisma.SaleInvoiceInclude;
 
 type ComputedSaleItem = {
@@ -164,6 +174,18 @@ export class SaleInvoicePostingService {
       discountedItems.reduce((sum, item) => sum + item.netTotalPrice, 0),
     );
 
+    const payment = this.resolvePayment(
+      command.paymentStatus,
+      command.paidAmount,
+      totalAmount,
+    );
+
+    if (payment.paymentStatus !== PaymentStatus.PAID && !patientId) {
+      throw new BadRequestException(
+        'Patient is required for pending or partial sale invoices',
+      );
+    }
+
     const pharmacyInvoice = await tx.pharmacyInvoice.create({
       data: {
         pharmacyId,
@@ -181,7 +203,9 @@ export class SaleInvoicePostingService {
     const saleInvoice = await tx.saleInvoice.create({
       data: {
         pharmacyInvoiceId: pharmacyInvoice.pharmacyInvoiceId,
-        paymentStatus: command.paymentStatus ?? PaymentStatus.PENDING,
+        // paymentStatus: command.paymentStatus ?? PaymentStatus.PENDING,
+        paymentStatus: payment.paymentStatus,
+        paidAmount: payment.paidAmount,
         saleType: command.saleType,
         customerRequestId: command.customerRequestId ?? undefined,
         subtotal,
@@ -235,6 +259,95 @@ export class SaleInvoicePostingService {
       },
       include: saleInvoicePostingResultInclude,
     });
+  }
+  resolvePayment(
+    requestedStatus: PaymentStatus | undefined,
+    requestedPaidAmount: number | undefined,
+    totalAmount: number,
+  ): {
+    paymentStatus: PaymentStatus;
+    paidAmount: number;
+  } {
+    const paymentStatus = requestedStatus ?? PaymentStatus.PENDING;
+
+    if (
+      requestedPaidAmount !== undefined &&
+      !Number.isFinite(requestedPaidAmount)
+    ) {
+      throw new BadRequestException('paidAmount must be a valid number');
+    }
+
+    const paidAmount = this.roundMoney(requestedPaidAmount ?? 0);
+
+    if (paidAmount < 0) {
+      throw new BadRequestException('paidAmount must not be negative');
+    }
+
+    if (totalAmount === 0) {
+      if (paidAmount !== 0) {
+        throw new BadRequestException(
+          'paidAmount must be 0 when totalAmount is 0',
+        );
+      }
+
+      if (paymentStatus === PaymentStatus.PARTIAL) {
+        throw new BadRequestException(
+          'A zero-total invoice cannot be partially paid',
+        );
+      }
+
+      return {
+        paymentStatus: PaymentStatus.PAID,
+        paidAmount: 0,
+      };
+    }
+
+    switch (paymentStatus) {
+      case PaymentStatus.PENDING:
+        if (paidAmount !== 0) {
+          throw new BadRequestException(
+            'paidAmount must be 0 when paymentStatus is PENDING',
+          );
+        }
+
+        return {
+          paymentStatus: PaymentStatus.PENDING,
+          paidAmount: 0,
+        };
+
+      case PaymentStatus.PARTIAL:
+        if (requestedPaidAmount === undefined) {
+          throw new BadRequestException(
+            'paidAmount is required when paymentStatus is PARTIAL',
+          );
+        }
+
+        if (paidAmount <= 0 || paidAmount >= totalAmount) {
+          throw new BadRequestException(
+            'For PARTIAL payment, paidAmount must be greater than 0 and less than totalAmount',
+          );
+        }
+
+        return {
+          paymentStatus: PaymentStatus.PARTIAL,
+          paidAmount,
+        };
+
+      case PaymentStatus.PAID:
+        if (requestedPaidAmount !== undefined && paidAmount !== totalAmount) {
+          throw new BadRequestException(
+            'When paymentStatus is PAID, paidAmount must equal totalAmount',
+          );
+        }
+
+        return {
+          paymentStatus: PaymentStatus.PAID,
+          paidAmount: totalAmount,
+        };
+
+      default:
+        throw new BadRequestException('Invalid paymentStatus');
+    }
   }
 
   private validatePayload(command: PostSaleInvoiceCommand): void {
@@ -799,6 +912,11 @@ export class SaleInvoicePostingService {
           `batchId ${requestedAllocation.batchId} is not available or does not belong to this pharmacy`,
         );
       }
+      if (batch.expiryDate && batch.expiryDate < new Date()) {
+        throw new BadRequestException(
+          `Cannot sell expired batchId ${requestedAllocation.batchId}`,
+        );
+      }
 
       if (batch.pharmacyDrugId !== item.pharmacyDrugId) {
         throw new BadRequestException(
@@ -918,5 +1036,4 @@ export class SaleInvoicePostingService {
       }
     }
   }
-
 }

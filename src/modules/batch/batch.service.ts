@@ -318,12 +318,25 @@ export class BatchService {
           : new Date();
 
         this.validateBatchExpiryDate(batchDto.expiryDate, receivedDate);
+        const pharmacyDrug = await tx.pharmacyDrug.findUnique({
+          where: {
+            pharmacyDrugId: batchDto.pharmacyDrugId,
+          },
+          include: {
+            drug: {
+              include: {
+                generalDrug: true,
+                privateDrug: true,
+              },
+            },
+          },
+        });
         const createdBatch = await tx.batch.create({
           data: {
             pharmacyDrugId: batchDto.pharmacyDrugId,
             supplierInvoiceItemId: null,
             batchNumber: batchDto.batchNumber?.trim() || null,
-            initialQuantity: batchDto.initialQuantity,
+            initialQuantity: batchDto.initialQuantity * (pharmacyDrug?.drug.generalDrug?.unitsPerBox ?? pharmacyDrug?.drug.privateDrug?.unitsPerBox ?? 1),
             soldQuantity: 0,
             expiryDate: batchDto.expiryDate
               ? new Date(batchDto.expiryDate)

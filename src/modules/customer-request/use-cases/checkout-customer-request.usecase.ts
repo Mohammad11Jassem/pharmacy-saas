@@ -11,16 +11,36 @@ import {
   CustomerRequestItemStatus,
   CustomerRequestStatus,
   DrugSource,
+  PaymentStatus,
+  PharmacyInvoiceStatus,
   PharmacyInvoiceType,
   Prisma,
   SaleType,
 } from '../../../generated/prisma/client';
 import { SaleInvoicePostingService } from '../../sale-invoice/services/sale-invoice-posting.service';
 import { CheckoutCustomerRequestDto } from '../dto/checkout-customer-request.dto';
+import { calculateSalePaymentSummary } from '../../sale-invoice/utils/sale-payment-summary.util';
+
+// const checkoutSaleInvoiceInclude = {
+//   pharmacyInvoice: true,
+//   items: true,
+// } satisfies Prisma.SaleInvoiceInclude;
 
 const checkoutSaleInvoiceInclude = {
   pharmacyInvoice: true,
+
   items: true,
+
+  returns: {
+    where: {
+      pharmacyInvoice: {
+        status: PharmacyInvoiceStatus.POSTED,
+      },
+    },
+    select: {
+      subtotalRefund: true,
+    },
+  },
 } satisfies Prisma.SaleInvoiceInclude;
 
 type CheckoutSaleInvoice = Prisma.SaleInvoiceGetPayload<{
@@ -101,11 +121,7 @@ export class CheckoutCustomerRequestUseCase {
     return this.unitOfWork.executeSerializable(async (tx) => {
       this.assertUniqueRequestItems(dto);
 
-      const request = await this.loadRequest(
-        tx,
-        pharmacyId,
-        customerRequestId,
-      );
+      const request = await this.loadRequest(tx, pharmacyId, customerRequestId);
 
       /**
        * Check idempotency before rejecting COMPLETED requests. A successful
@@ -146,9 +162,7 @@ export class CheckoutCustomerRequestUseCase {
       );
 
       const selectedItems = dto.items.map((dtoItem) => {
-        const requestItem = requestItemById.get(
-          dtoItem.customerRequestItemId,
-        );
+        const requestItem = requestItemById.get(dtoItem.customerRequestItemId);
 
         if (!requestItem) {
           throw new BadRequestException(
@@ -188,20 +202,32 @@ export class CheckoutCustomerRequestUseCase {
           saleQuantity: dtoItem.saleQuantity,
         };
       });
+      const paymentStatus = dto.paymentStatus ?? PaymentStatus.PENDING;
 
       const postedInvoice = await this.saleInvoicePostingService.post(
         tx,
         pharmacyId,
         {
           idempotencyKey: dto.idempotencyKey,
-          paymentStatus: dto.paymentStatus,
+          paymentStatus,
+          paidAmount: dto.paidAmount,
+          // patient:
+          //   paymentStatus !== PaymentStatus.PAID
+          //     ? {
+          //         fullName: request.customerName,
+          //         phone: request.customerPhone ?? undefined,
+          //       }
+          //     : undefined,
+          patient: {
+            fullName: request.customerName,
+            phone: request.customerPhone ?? undefined,
+          },
           saleType: SaleType.CUSTOMER_REQUEST,
           customerRequestId,
           discount: dto.discount,
           notes: dto.notes,
           items: selectedItems.map((item) => ({
-            customerRequestItemId:
-              item.requestItem.customerRequestItemId,
+            customerRequestItemId: item.requestItem.customerRequestItemId,
             pharmacyDrugId: item.requestItem.pharmacyDrugId,
             unitType: item.largestSaleUnit.unitType,
             displayQuantity: item.saleQuantity,
@@ -399,9 +425,7 @@ export class CheckoutCustomerRequestUseCase {
 
       return {
         tradeName: drug.generalDrug.tradeName,
-        unitsPerBox: this.assertValidUnitsPerBox(
-          drug.generalDrug.unitsPerBox,
-        ),
+        unitsPerBox: this.assertValidUnitsPerBox(drug.generalDrug.unitsPerBox),
         isDrugActive: drug.generalDrug.isActive,
       };
     }
@@ -412,9 +436,7 @@ export class CheckoutCustomerRequestUseCase {
 
     return {
       tradeName: drug.privateDrug.tradeName,
-      unitsPerBox: this.assertValidUnitsPerBox(
-        drug.privateDrug.unitsPerBox,
-      ),
+      unitsPerBox: this.assertValidUnitsPerBox(drug.privateDrug.unitsPerBox),
       isDrugActive: drug.privateDrug.isActive,
     };
   }
@@ -514,8 +536,7 @@ export class CheckoutCustomerRequestUseCase {
         historyItem.unitFactorToBase,
       );
 
-      const appliedSoFar =
-        appliedSoFarByRequestItemId.get(requestItemId) ?? 0;
+      const appliedSoFar = appliedSoFarByRequestItemId.get(requestItemId) ?? 0;
 
       const remainingBeforeInvoice = Math.max(
         requestItem.requestedQuantity - appliedSoFar,
@@ -606,6 +627,11 @@ export class CheckoutCustomerRequestUseCase {
       };
     });
 
+    const paymentSummary = calculateSalePaymentSummary(
+      saleInvoice.totalAmount,
+      saleInvoice.paidAmount,
+      saleInvoice.returns.map((returnInvoice) => returnInvoice.subtotalRefund),
+    );
     return {
       idempotentReplay,
 
@@ -624,9 +650,14 @@ export class CheckoutCustomerRequestUseCase {
         customerRequestId: saleInvoice.customerRequestId,
         saleType: saleInvoice.saleType,
         paymentStatus: saleInvoice.paymentStatus,
+
         subtotal: saleInvoice.subtotal,
         discount: saleInvoice.discount,
         totalAmount: saleInvoice.totalAmount,
+        paidAmount: saleInvoice.paidAmount,
+
+        ...paymentSummary,
+        
         invoiceDate: saleInvoice.pharmacyInvoice.invoiceDate,
         notes: saleInvoice.pharmacyInvoice.notes,
       },

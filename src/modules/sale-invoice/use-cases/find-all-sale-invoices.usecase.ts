@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from '@nestjs/common';
 import {
+  PharmacyInvoiceStatus,
   PharmacyInvoiceType,
   Prisma,
 } from '../../../generated/prisma/client';
@@ -13,6 +14,8 @@ import {
   getPaginationParams,
   toPaginatedResult,
 } from '../../../common/pagination/pagination.util';
+
+import { calculateSalePaymentSummary } from '../utils/sale-payment-summary.util';
 
 @Injectable()
 export class FindAllSaleInvoicesUseCase {
@@ -49,6 +52,16 @@ export class FindAllSaleInvoicesUseCase {
               },
             },
           },
+          returns: {
+            where: {
+              pharmacyInvoice: {
+                status: PharmacyInvoiceStatus.POSTED,
+              },
+            },
+            select: {
+              subtotalRefund: true,
+            },
+          },
         },
         orderBy,
         skip,
@@ -60,23 +73,47 @@ export class FindAllSaleInvoicesUseCase {
       }),
     ]);
 
-    const mappedItems = items.map((invoice) => ({
-      ...invoice,
+    // const mappedItems = items.map((invoice) => ({
+    //   ...invoice,
 
-      items: invoice.items.map((item) => ({
-        ...item,
+    //   items: invoice.items.map((item) => ({
+    //     ...item,
 
-        /**
-         * لأننا لا نخزن displayQuantity في DB.
-         * نحسبها من:
-         * baseQuantity / unitFactorToBase
-         */
-        displayQuantity:
-          item.unitFactorToBase > 0
-            ? item.baseQuantity / item.unitFactorToBase
-            : null,
-      })),
-    }));
+    //     /**
+    //      * لأننا لا نخزن displayQuantity في DB.
+    //      * نحسبها من:
+    //      * baseQuantity / unitFactorToBase
+    //      */
+    //     displayQuantity:
+    //       item.unitFactorToBase > 0
+    //         ? item.baseQuantity / item.unitFactorToBase
+    //         : null,
+    //   })),
+    // }));
+
+    const mappedItems = items.map((invoice) => {
+      const { returns, ...invoiceFields } = invoice;
+
+      const paymentSummary = calculateSalePaymentSummary(
+        invoice.totalAmount,
+        invoice.paidAmount,
+        returns.map((returnInvoice) => returnInvoice.subtotalRefund),
+      );
+
+      return {
+        ...invoiceFields,
+        ...paymentSummary,
+
+        items: invoice.items.map((item) => ({
+          ...item,
+
+          displayQuantity:
+            item.unitFactorToBase > 0
+              ? item.baseQuantity / item.unitFactorToBase
+              : null,
+        })),
+      };
+    });
 
     return toPaginatedResult(mappedItems, total, page, limit);
   }
@@ -108,9 +145,7 @@ export class FindAllSaleInvoicesUseCase {
       }
 
       if (query.toDate) {
-        pharmacyInvoiceWhere.invoiceDate.lte = this.getEndOfDay(
-          query.toDate,
-        );
+        pharmacyInvoiceWhere.invoiceDate.lte = this.getEndOfDay(query.toDate);
       }
     }
 
@@ -175,10 +210,7 @@ export class FindAllSaleInvoicesUseCase {
       where.saleType = query.saleType;
     }
 
-    if (
-      query.minTotal !== undefined ||
-      query.maxTotal !== undefined
-    ) {
+    if (query.minTotal !== undefined || query.maxTotal !== undefined) {
       const totalAmountFilter: Prisma.DecimalFilter = {};
 
       if (query.minTotal !== undefined) {

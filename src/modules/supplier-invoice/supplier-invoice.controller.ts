@@ -21,6 +21,7 @@ import { AddBatchesToSupplierInvoiceDto } from '../batch/dto/add-batches-to-supp
 import { Auth } from '../../iam/authentication/decorators/auth.decorator';
 import { AuthType } from '../../iam/authentication/enums/auth-type.enum';
 import { LogInvoiceActivity } from '../invoice-activity/decorators/log-invoice-activity.decorator';
+import { UpdateSupplierInvoicePaymentDto } from './dto/update-supplier-invoice-payment.dto';
 
 @Controller('supplier-invoice')
 export class SupplierInvoiceController {
@@ -55,6 +56,17 @@ export class SupplierInvoiceController {
     @Param('id', ParseIntPipe) id: number,
   ) {
     return this.supplierInvoiceService.findOne(pharmacyId, id);
+  }
+
+  @Roles(AccountType.PHARMACY)
+  @Patch(':id/payment')
+  @LogInvoiceActivity('تم تحديث دفع فاتورة شراء')
+  updatePayment(
+    @CurrentPharmacy() pharmacyId: number,
+    @Param('id', ParseIntPipe) id: number,
+    @Body() dto: UpdateSupplierInvoicePaymentDto,
+  ) {
+    return this.supplierInvoiceService.updatePayment(pharmacyId, id, dto);
   }
 
   @Roles(AccountType.PHARMACY)

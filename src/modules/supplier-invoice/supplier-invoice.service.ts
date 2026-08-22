@@ -13,13 +13,54 @@ import {
   getPaginationParams,
   toPaginatedResult,
 } from '../../common/pagination/pagination.util';
+import { UpdateSupplierInvoicePaymentUseCase } from './use-cases/update-supplier-invoice-payment.usecase';
+import { UpdateSupplierInvoicePaymentDto } from './dto/update-supplier-invoice-payment.dto';
+import {
+  calculateSupplierPaymentSummary,
+  resolveSupplierPayment,
+} from './utils/supplier-payment.util';
 
 @Injectable()
 export class SupplierInvoiceService {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly updateSupplierInvoicePaymentUseCase: UpdateSupplierInvoicePaymentUseCase,
+  ) {}
   async create(pharmacyId: number, dto: CreateSupplierInvoiceDto) {
     if (!Array.isArray(dto.items) || dto.items.length === 0) {
       throw new BadRequestException('items must be a non-empty array');
+    }
+
+    const idempotencyKey = dto.idempotencyKey.trim();
+
+    const existingInvoice = await this.prisma.supplierInvoice.findFirst({
+      where: {
+        supplierId: dto.supplierId,
+        idempotencyKey,
+
+        supplier: {
+          pharmacyId,
+        },
+      },
+
+      include: {
+        items: {
+          include: {
+            batches: true,
+          },
+        },
+      },
+    });
+
+    if (existingInvoice) {
+      // return existingInvoice;
+      return {
+        ...existingInvoice,
+        ...calculateSupplierPaymentSummary(
+          existingInvoice.totalPrice,
+          existingInvoice.paidAmount,
+        ),
+      };
     }
     const requestedPharmacyDrugIds = dto.items.map(
       (item) => item.pharmacyDrugId,
@@ -33,335 +74,389 @@ export class SupplierInvoiceService {
       );
     }
     try {
-      return await this.prisma.$transaction(async (tx) => {
-        return this.prisma.$transaction(
-          async (tx: Prisma.TransactionClient) => {
-            // 1. Verify supplier belongs to pharmacy
-            await this.assertSupplierBelongsToPharmacy(
-              dto.supplierId,
-              pharmacyId,
-              tx,
-            );
+      return await this.prisma.$transaction(
+        async (tx: Prisma.TransactionClient) => {
+          // 1. Verify supplier belongs to pharmacy
+          await this.assertSupplierBelongsToPharmacy(
+            dto.supplierId,
+            pharmacyId,
+            tx,
+          );
 
-            const pharmacyDrugIds = [
-              ...new Set(dto.items.map((item) => item.pharmacyDrugId)),
-            ];
+          const pharmacyDrugIds = [
+            ...new Set(dto.items.map((item) => item.pharmacyDrugId)),
+          ];
 
-            //verify the invoice number is unique at this pharmacy for this supplier
-            if (dto.invoiceNumber?.trim()) {
-              const existingInvoice = await tx.supplierInvoice.findFirst({
-                where: {
-                  supplierId: dto.supplierId,
-                  invoiceNumber: dto.invoiceNumber.trim(),
-                },
-                select: {
-                  supplierInvoiceId: true,
-                },
-              });
-
-              if (existingInvoice) {
-                throw new BadRequestException(
-                  `Invoice number ${dto.invoiceNumber} already exists for this supplier`,
-                );
-              }
-            }
-
-            // 2. Verify pharmacy drugs belong to pharmacy
-            await this.assertPharmacyDrugsBelongToPharmacy(
-              pharmacyDrugIds,
-              pharmacyId,
-              tx,
-            );
-
-            // 3. Get unitsPerBox for every pharmacy drug
-            const pharmacyDrugs = await tx.pharmacyDrug.findMany({
+          //verify the invoice number is unique at this pharmacy for this supplier
+          if (dto.invoiceNumber?.trim()) {
+            const existingInvoice = await tx.supplierInvoice.findFirst({
               where: {
-                pharmacyId,
-                pharmacyDrugId: {
-                  in: pharmacyDrugIds,
-                },
+                supplierId: dto.supplierId,
+                invoiceNumber: dto.invoiceNumber.trim(),
               },
               select: {
-                pharmacyDrugId: true,
-                drug: {
-                  select: {
-                    source: true,
-                    generalDrug: {
-                      select: {
-                        unitsPerBox: true,
-                      },
+                supplierInvoiceId: true,
+              },
+            });
+
+            if (existingInvoice) {
+              throw new BadRequestException(
+                `Invoice number ${dto.invoiceNumber} already exists for this supplier`,
+              );
+            }
+          }
+
+          // 2. Verify pharmacy drugs belong to pharmacy
+          await this.assertPharmacyDrugsBelongToPharmacy(
+            pharmacyDrugIds,
+            pharmacyId,
+            tx,
+          );
+
+          // 3. Get unitsPerBox for every pharmacy drug
+          const pharmacyDrugs = await tx.pharmacyDrug.findMany({
+            where: {
+              pharmacyId,
+              pharmacyDrugId: {
+                in: pharmacyDrugIds,
+              },
+            },
+            select: {
+              pharmacyDrugId: true,
+              drug: {
+                select: {
+                  source: true,
+                  generalDrug: {
+                    select: {
+                      unitsPerBox: true,
                     },
-                    privateDrug: {
-                      select: {
-                        unitsPerBox: true,
-                      },
+                  },
+                  privateDrug: {
+                    select: {
+                      unitsPerBox: true,
                     },
                   },
                 },
               },
-            });
+            },
+          });
 
-            const unitsPerBoxMap = new Map<number, number>();
+          const unitsPerBoxMap = new Map<number, number>();
 
-            for (const pharmacyDrug of pharmacyDrugs) {
-              // const unitsPerBox = Number(pharmacyDrug.drug.generalDrug?.unitsPerBox);
-              const unitsPerBox = Number(
-                pharmacyDrug.drug.generalDrug?.unitsPerBox ??
-                  pharmacyDrug.drug.privateDrug?.unitsPerBox,
-              );
-
-              if (
-                !Number.isFinite(unitsPerBox) ||
-                !Number.isInteger(unitsPerBox) ||
-                unitsPerBox <= 0
-              ) {
-                throw new BadRequestException(
-                  `Invalid unitsPerBox for pharmacyDrugId ${pharmacyDrug.pharmacyDrugId}`,
-                );
-              }
-
-              unitsPerBoxMap.set(pharmacyDrug.pharmacyDrugId, unitsPerBox);
-            }
-
-            // 4. Compute quantities and prices
-            const computedItems = dto.items.map((item) => {
-              const boxQuantity = Number(item.quantity);
-              const netUnitPrice = Number(item.netUnitPrice);
-
-              if (!Number.isFinite(boxQuantity) || boxQuantity <= 0) {
-                throw new BadRequestException(
-                  `Invalid quantity for pharmacyDrugId ${item.pharmacyDrugId}`,
-                );
-              }
-
-              if (!Number.isFinite(netUnitPrice) || netUnitPrice < 0) {
-                throw new BadRequestException(
-                  `Invalid netUnitPrice for pharmacyDrugId ${item.pharmacyDrugId}`,
-                );
-              }
-
-              const unitsPerBox = unitsPerBoxMap.get(item.pharmacyDrugId);
-
-              if (!unitsPerBox) {
-                throw new BadRequestException(
-                  `unitsPerBox was not found for pharmacyDrugId ${item.pharmacyDrugId}`,
-                );
-              }
-
-              // Convert box quantity to base units
-              const baseQuantity = boxQuantity * unitsPerBox;
-
-              // Price is calculated using number of boxes
-              const totalPrice = Number(
-                (boxQuantity * netUnitPrice).toFixed(2),
-              );
-
-              return {
-                ...item,
-
-                // Original quantity sent by frontend
-                boxQuantity,
-
-                // Quantity stored in database
-                quantity: baseQuantity,
-
-                unitsPerBox,
-                netUnitPrice,
-                totalPrice,
-              };
-            });
-
-            const subtotal = Number(
-              computedItems
-                .reduce((sum, item) => sum + item.totalPrice, 0)
-                .toFixed(2),
+          for (const pharmacyDrug of pharmacyDrugs) {
+            // const unitsPerBox = Number(pharmacyDrug.drug.generalDrug?.unitsPerBox);
+            const unitsPerBox = Number(
+              pharmacyDrug.drug.generalDrug?.unitsPerBox ??
+                pharmacyDrug.drug.privateDrug?.unitsPerBox,
             );
 
-            const discount = dto.discount ? Number(dto.discount) : 0;
-
-            if (!Number.isFinite(discount) || discount < 0) {
+            if (
+              !Number.isFinite(unitsPerBox) ||
+              !Number.isInteger(unitsPerBox) ||
+              unitsPerBox <= 0
+            ) {
               throw new BadRequestException(
-                'discount must be a valid positive number',
+                `Invalid unitsPerBox for pharmacyDrugId ${pharmacyDrug.pharmacyDrugId}`,
               );
             }
 
-            if (discount > subtotal) {
+            unitsPerBoxMap.set(pharmacyDrug.pharmacyDrugId, unitsPerBox);
+          }
+
+          // 4. Compute quantities and prices
+          const computedItems = dto.items.map((item) => {
+            const boxQuantity = Number(item.quantity);
+            const netUnitPrice = Number(item.netUnitPrice);
+
+            if (!Number.isFinite(boxQuantity) || boxQuantity <= 0) {
               throw new BadRequestException(
-                'discount cannot be greater than subtotal',
+                `Invalid quantity for pharmacyDrugId ${item.pharmacyDrugId}`,
               );
             }
 
-            const totalPrice = Number((subtotal - discount).toFixed(2));
+            if (!Number.isFinite(netUnitPrice) || netUnitPrice < 0) {
+              throw new BadRequestException(
+                `Invalid netUnitPrice for pharmacyDrugId ${item.pharmacyDrugId}`,
+              );
+            }
 
-            const invoiceDate = dto.invoiceDate
-              ? new Date(dto.invoiceDate)
-              : new Date();
+            const unitsPerBox = unitsPerBoxMap.get(item.pharmacyDrugId);
 
-            // 5. Create supplier invoice with its items
-            const created = await tx.supplierInvoice.create({
-              data: {
-                supplierId: dto.supplierId,
-                // invoiceNumber: dto.invoiceNumber ?? undefined,
-                invoiceNumber: dto.invoiceNumber?.trim() || undefined,
-                invoiceDate,
-                subtotal,
-                discount,
-                totalPrice,
-                notes: dto.notes ?? undefined,
-                status: SupplierInvoiceStatus.PENDING,
+            if (!unitsPerBox) {
+              throw new BadRequestException(
+                `unitsPerBox was not found for pharmacyDrugId ${item.pharmacyDrugId}`,
+              );
+            }
 
-                items: {
-                  create: computedItems.map((item) => ({
-                    pharmacyDrug: {
-                      connect: {
-                        pharmacyDrugId: item.pharmacyDrugId,
-                      },
+            // Convert box quantity to base units
+            const baseQuantity = boxQuantity * unitsPerBox;
+
+            // Price is calculated using number of boxes
+            const totalPrice = Number((boxQuantity * netUnitPrice).toFixed(2));
+
+            return {
+              ...item,
+
+              // Original quantity sent by frontend
+              boxQuantity,
+
+              // Quantity stored in database
+              quantity: baseQuantity,
+
+              unitsPerBox,
+              netUnitPrice,
+              totalPrice,
+            };
+          });
+
+          const subtotal = Number(
+            computedItems
+              .reduce((sum, item) => sum + item.totalPrice, 0)
+              .toFixed(2),
+          );
+
+          const discount = dto.discount ? Number(dto.discount) : 0;
+
+          if (!Number.isFinite(discount) || discount < 0) {
+            throw new BadRequestException(
+              'discount must be a valid positive number',
+            );
+          }
+
+          if (discount > subtotal) {
+            throw new BadRequestException(
+              'discount cannot be greater than subtotal',
+            );
+          }
+
+          const totalPrice = Number((subtotal - discount).toFixed(2));
+
+          const payment = resolveSupplierPayment(
+            dto.paymentStatus,
+            dto.paidAmount,
+            totalPrice,
+          );
+
+          const invoiceDate = dto.invoiceDate
+            ? new Date(dto.invoiceDate)
+            : new Date();
+
+          // 5. Create supplier invoice with its items
+          const created = await tx.supplierInvoice.create({
+            data: {
+              supplierId: dto.supplierId,
+              // invoiceNumber: dto.invoiceNumber ?? undefined,
+              idempotencyKey,
+              invoiceNumber: dto.invoiceNumber?.trim() || undefined,
+              invoiceDate,
+              subtotal,
+              discount,
+              totalPrice,
+              paymentStatus: payment.paymentStatus,
+              paidAmount: payment.paidAmount,
+              notes: dto.notes ?? undefined,
+              status: SupplierInvoiceStatus.PENDING,
+
+              items: {
+                create: computedItems.map((item) => ({
+                  pharmacyDrug: {
+                    connect: {
+                      pharmacyDrugId: item.pharmacyDrugId,
                     },
+                  },
 
-                    // Stored as base units
-                    quantity: item.quantity,
+                  // Stored as base units
+                  quantity: item.quantity,
 
-                    // Price of one box
-                    netUnitPrice: item.netUnitPrice,
-                    totalPrice: item.totalPrice,
-                    notes: item.notes ?? undefined,
-                  })),
-                },
+                  // Price of one box
+                  netUnitPrice: item.netUnitPrice,
+                  totalPrice: item.totalPrice,
+                  notes: item.notes ?? undefined,
+                })),
               },
-              include: {
-                items: true,
-              },
-            });
+            },
+            include: {
+              items: true,
+            },
+          });
 
-            // 6. Create batches
-            const createdItemsByPharmacyDrugId = new Map(
-              created.items.map((item) => [item.pharmacyDrugId, item]),
+          // 6. Create batches
+          const createdItemsByPharmacyDrugId = new Map(
+            created.items.map((item) => [item.pharmacyDrugId, item]),
+          );
+          const batchesToCreate: Prisma.BatchCreateManyInput[] = [];
+
+          for (const itemInput of computedItems) {
+            const createdItem = createdItemsByPharmacyDrugId.get(
+              itemInput.pharmacyDrugId,
             );
-            const batchesToCreate: Prisma.BatchCreateManyInput[] = [];
 
-            for (const itemInput of computedItems) {
-              const createdItem = createdItemsByPharmacyDrugId.get(
-                itemInput.pharmacyDrugId,
+            if (!createdItem) {
+              throw new BadRequestException(
+                `Supplier invoice item was not created for pharmacyDrugId ${itemInput.pharmacyDrugId}`,
               );
+            }
 
-              if (!createdItem) {
-                throw new BadRequestException(
-                  `Supplier invoice item was not created for pharmacyDrugId ${itemInput.pharmacyDrugId}`,
-                );
-              }
+            if (itemInput.batches && itemInput.batches.length > 0) {
+              let totalBatchBoxQuantity = 0;
+              for (const batch of itemInput.batches) {
+                /*
+                 * batch.initialQuantity coming from frontend
+                 * represents number of boxes.
+                 */
+                const batchBoxQuantity =
+                  batch.initialQuantity !== undefined &&
+                  batch.initialQuantity !== null
+                    ? Number(batch.initialQuantity)
+                    : itemInput.batches.length === 1
+                      ? itemInput.boxQuantity
+                      : null;
 
-              if (itemInput.batches && itemInput.batches.length > 0) {
-                let totalBatchBoxQuantity = 0;
-                for (const batch of itemInput.batches) {
-                  /*
-                   * batch.initialQuantity coming from frontend
-                   * represents number of boxes.
-                   */
-                  const batchBoxQuantity =
-                    batch.initialQuantity !== undefined &&
-                    batch.initialQuantity !== null
-                      ? Number(batch.initialQuantity)
-                      : itemInput.batches.length === 1
-                        ? itemInput.boxQuantity
-                        : null;
-
-                  if (
-                    !Number.isFinite(batchBoxQuantity) ||
-                    !Number.isInteger(batchBoxQuantity) ||
-                    batchBoxQuantity <= 0
-                  ) {
-                    throw new BadRequestException(
-                      `Invalid batch quantity for pharmacyDrugId ${itemInput.pharmacyDrugId}`,
-                    );
-                  }
-
-                  totalBatchBoxQuantity += batchBoxQuantity;
-
-                  if (totalBatchBoxQuantity > itemInput.boxQuantity) {
-                    throw new BadRequestException(
-                      `Total batch quantity cannot exceed invoice quantity for pharmacyDrugId ${itemInput.pharmacyDrugId}`,
-                    );
-                  }
-
-                  // Convert batch boxes to base units
-                  const batchBaseQuantity =
-                    batchBoxQuantity * itemInput.unitsPerBox;
-
-                  const receivedDate = new Date();
-
-                  this.validateBatchExpiryDate(batch.expiryDate, receivedDate);
-
-                  batchesToCreate.push({
-                    pharmacyDrugId: itemInput.pharmacyDrugId,
-                    supplierInvoiceItemId: createdItem.supplierInvoiceItemId,
-
-                    batchNumber: batch.batchNumber?.trim() || null,
-
-                    expiryDate: batch.expiryDate
-                      ? new Date(batch.expiryDate)
-                      : null,
-
-                    initialQuantity: batchBaseQuantity,
-                    receivedDate,
-                  });
+                if (
+                  !Number.isFinite(batchBoxQuantity) ||
+                  !Number.isInteger(batchBoxQuantity) ||
+                  batchBoxQuantity <= 0
+                ) {
+                  throw new BadRequestException(
+                    `Invalid batch quantity for pharmacyDrugId ${itemInput.pharmacyDrugId}`,
+                  );
                 }
+
+                totalBatchBoxQuantity += batchBoxQuantity;
+
+                if (totalBatchBoxQuantity > itemInput.boxQuantity) {
+                  throw new BadRequestException(
+                    `Total batch quantity cannot exceed invoice quantity for pharmacyDrugId ${itemInput.pharmacyDrugId}`,
+                  );
+                }
+
+                // Convert batch boxes to base units
+                const batchBaseQuantity =
+                  batchBoxQuantity * itemInput.unitsPerBox;
+
+                const receivedDate = new Date();
+
+                this.validateBatchExpiryDate(batch.expiryDate, receivedDate);
+
+                batchesToCreate.push({
+                  pharmacyDrugId: itemInput.pharmacyDrugId,
+                  supplierInvoiceItemId: createdItem.supplierInvoiceItemId,
+
+                  batchNumber: batch.batchNumber?.trim() || null,
+
+                  expiryDate: batch.expiryDate
+                    ? new Date(batch.expiryDate)
+                    : null,
+
+                  initialQuantity: batchBaseQuantity,
+                  receivedDate,
+                });
               }
             }
+          }
 
-            if (batchesToCreate.length > 0) {
-              await tx.batch.createMany({
-                data: batchesToCreate,
-              });
-            }
+          if (batchesToCreate.length > 0) {
+            await tx.batch.createMany({
+              data: batchesToCreate,
+            });
+          }
 
-            // 7. Re-fetch the invoice after batches were created
-            const invoiceWithBatches = await tx.supplierInvoice.findUnique({
-              where: {
-                supplierInvoiceId: created.supplierInvoiceId,
-              },
-              include: {
-                items: {
-                  include: {
-                    batches: true,
-                  },
+          // 7. Re-fetch the invoice after batches were created
+          const invoiceWithBatches = await tx.supplierInvoice.findUnique({
+            where: {
+              supplierInvoiceId: created.supplierInvoiceId,
+            },
+            include: {
+              items: {
+                include: {
+                  batches: true,
                 },
               },
-            });
+            },
+          });
 
-            if (!invoiceWithBatches) {
-              throw new NotFoundException(
-                'Supplier invoice not found after creation',
-              );
-            }
+          if (!invoiceWithBatches) {
+            throw new NotFoundException(
+              'Supplier invoice not found after creation',
+            );
+          }
 
-            // 8. Calculate stocking status
-            const stockingStatus =
-              this.calculateInvoiceStockingStatus(invoiceWithBatches);
+          // 8. Calculate stocking status
+          const stockingStatus =
+            this.calculateInvoiceStockingStatus(invoiceWithBatches);
 
-            // 9. Update invoice status and return the final invoice
-            return tx.supplierInvoice.update({
-              where: {
-                supplierInvoiceId: created.supplierInvoiceId,
-              },
-              data: {
-                status: stockingStatus,
-              },
-              include: {
-                items: {
-                  include: {
-                    batches: true,
-                  },
+          // 9. Update invoice status and return the final invoice
+
+          const finalInvoice = await tx.supplierInvoice.update({
+            where: {
+              supplierInvoiceId: created.supplierInvoiceId,
+            },
+            data: {
+              status: stockingStatus,
+            },
+            include: {
+              items: {
+                include: {
+                  batches: true,
                 },
               },
-            });
-          },
-        );
-      });
+            },
+          });
+
+          return {
+            ...finalInvoice,
+            ...calculateSupplierPaymentSummary(
+              finalInvoice.totalPrice,
+              finalInvoice.paidAmount,
+            ),
+          };
+        },
+      );
     } catch (error: unknown) {
       if (
         error instanceof Prisma.PrismaClientKnownRequestError &&
         error.code === 'P2002'
       ) {
+        /**
+         * قد يكون طلبان متزامنان بنفس idempotencyKey.
+         *
+         * الطلب الأول نجح، والثاني وصل إلى الـ unique constraint.
+         * في هذه الحالة نعيد نتيجة الطلب الأول.
+         */
+        const existingInvoice = await this.prisma.supplierInvoice.findFirst({
+          where: {
+            supplierId: dto.supplierId,
+            idempotencyKey,
+
+            supplier: {
+              pharmacyId,
+            },
+          },
+
+          include: {
+            items: {
+              include: {
+                batches: true,
+              },
+            },
+          },
+        });
+
+        if (existingInvoice) {
+          // return existingInvoice;
+          return {
+            ...existingInvoice,
+            ...calculateSupplierPaymentSummary(
+              existingInvoice.totalPrice,
+              existingInvoice.paidAmount,
+            ),
+          };
+        }
+
+        /**
+         * إذا لم نجد invoice بنفس idempotencyKey،
+         * فالـ P2002 على الأغلب بسبب invoiceNumber.
+         */
         throw new ConflictException(
           'Invoice number already exists for this supplier',
         );
@@ -514,92 +609,20 @@ export class SupplierInvoiceService {
       }),
     ]);
 
-    return toPaginatedResult(supplierInvoices, total, page, limit);
+    return toPaginatedResult(
+      supplierInvoices.map((invoice) => ({
+        ...invoice,
+        ...calculateSupplierPaymentSummary(
+          invoice.totalPrice,
+          invoice.paidAmount,
+        ),
+      })),
+      total,
+      page,
+      limit,
+    );
+    // return toPaginatedResult(supplierInvoices, total, page, limit);
   }
-
-  // async findOne(pharmacyId: number, id: number) {
-  //   const invoice = await this.prisma.supplierInvoice.findFirst({
-  //     where: {
-  //       supplierInvoiceId: id,
-
-  //       supplier: {
-  //         pharmacyId,
-  //       },
-  //     },
-
-  //     // Remove timestamps from the supplier invoice.
-  //     omit: {
-  //       createdAt: true,
-  //       updatedAt: true,
-  //     },
-
-  //     include: {
-  //       supplier: {
-  //         // Remove timestamps from the supplier.
-  //         omit: {
-  //           createdAt: true,
-  //           updatedAt: true,
-  //         },
-  //       },
-
-  //       items: {
-  //         // Remove timestamps from every invoice item.
-  //         omit: {
-  //           createdAt: true,
-  //           updatedAt: true,
-  //         },
-
-  //         include: {
-  //           pharmacyDrug: {
-  //             select: {
-  //               drug: {
-  //                 select: {
-  //                   generalDrug: {
-  //                     select: {
-  //                       tradeName: true,
-  //                     },
-  //                   },
-
-  //                   privateDrug: {
-  //                     select: {
-  //                       tradeName: true,
-  //                     },
-  //                   },
-  //                 },
-  //               },
-  //             },
-  //           },
-
-  //           batches: {
-  //             // Remove timestamps from every batch.
-  //             omit: {
-  //               createdAt: true,
-  //               updatedAt: true,
-  //             },
-  //           },
-  //         },
-  //       },
-  //     },
-  //   });
-
-  //   if (!invoice) {
-  //     throw new NotFoundException('Supplier invoice not found');
-  //   }
-
-  //   // return invoice;
-  //   return {
-  //     ...invoice,
-
-  //     items: invoice.items.map(({ pharmacyDrug, ...item }) => ({
-  //       ...item,
-
-  //       tradeName:
-  //         pharmacyDrug.drug.generalDrug?.tradeName ??
-  //         pharmacyDrug.drug.privateDrug?.tradeName ??
-  //         null,
-  //     })),
-  //   };
-  // }
 
   async findOne(pharmacyId: number, id: number) {
     const invoice = await this.prisma.supplierInvoice.findFirst({
@@ -676,6 +699,11 @@ export class SupplierInvoiceService {
     return {
       ...invoice,
 
+      ...calculateSupplierPaymentSummary(
+        invoice.totalPrice,
+        invoice.paidAmount,
+      ),
+
       items: invoice.items.map(({ pharmacyDrug, ...item }) => {
         const unitsPerBox =
           pharmacyDrug.drug.generalDrug?.unitsPerBox ??
@@ -687,7 +715,7 @@ export class SupplierInvoiceService {
 
           quantity: item.quantity / unitsPerBox,
 
-          batches : item.batches.map((batch) => ({
+          batches: item.batches.map((batch) => ({
             ...batch,
             initialQuantity: batch.initialQuantity / unitsPerBox,
           })),
@@ -699,6 +727,18 @@ export class SupplierInvoiceService {
         };
       }),
     };
+  }
+
+  updatePayment(
+    pharmacyId: number,
+    supplierInvoiceId: number,
+    dto: UpdateSupplierInvoicePaymentDto,
+  ) {
+    return this.updateSupplierInvoicePaymentUseCase.execute(
+      pharmacyId,
+      supplierInvoiceId,
+      dto,
+    );
   }
 
   private calculateInvoiceStockingStatus(
