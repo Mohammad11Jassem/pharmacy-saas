@@ -1,136 +1,3 @@
-// import 'dotenv/config';
-// import { PrismaPg } from '@prisma/adapter-pg';
-// import { PrismaClient } from '../src/generated/prisma/client';
-
-// const connectionString = process.env.DATABASE_URL;
-
-// if (!connectionString) {
-//   throw new Error('DATABASE_URL is not defined');
-// }
-
-// const adapter = new PrismaPg({
-//   connectionString,
-// });
-
-// const prisma = new PrismaClient({
-//   adapter,
-// });
-
-// async function seedDosageForms() {
-//   await prisma.dosageForm.createMany({
-//     data: [
-//       {
-//         dosageFormName: 'Tablet',
-//         formCategory: 'SOLID',
-//       },
-//       {
-//         dosageFormName: 'Capsule',
-//         formCategory: 'SOLID',
-//       },
-//       {
-//         dosageFormName: 'Syrup',
-//         formCategory: 'LIQUID',
-//       },
-//       {
-//         dosageFormName: 'Injection',
-//         formCategory: 'INJECTION',
-//       },
-//       {
-//         dosageFormName: 'Cream',
-//         formCategory: 'SEMI_SOLID',
-//       },
-//       {
-//         dosageFormName: 'Ointment',
-//         formCategory: 'SEMI_SOLID',
-//       },
-//       {
-//         dosageFormName: 'Drops',
-//         formCategory: 'LIQUID',
-//       },
-//     ],
-//     skipDuplicates: true,
-//   });
-// }
-
-// async function seedDrugCategories() {
-//   await prisma.drugCategory.createMany({
-//     data: [
-//       {
-//         categoryName: 'Antibiotics',
-//         description: 'Drugs used to treat bacterial infections',
-//       },
-//       {
-//         categoryName: 'Painkillers',
-//         description: 'Drugs used to relieve pain',
-//       },
-//       {
-//         categoryName: 'Vitamins',
-//         description: 'Vitamin and supplement products',
-//       },
-//       {
-//         categoryName: 'Diabetes',
-//         description: 'Drugs used for diabetes management',
-//       },
-//       {
-//         categoryName: 'Hypertension',
-//         description: 'Drugs used for blood pressure management',
-//       },
-//       {
-//         categoryName: 'Dermatology',
-//         description: 'Skin-related medications',
-//       },
-//     ],
-//     skipDuplicates: true,
-//   });
-// }
-
-// async function seedActiveIngredients() {
-//   await prisma.activeIngredient.createMany({
-//     data: [
-//       {
-//         ingredientName: 'Paracetamol',
-//         description: 'Analgesic and antipyretic',
-//       },
-//       {
-//         ingredientName: 'Ibuprofen',
-//         description: 'Non-steroidal anti-inflammatory drug',
-//       },
-//       {
-//         ingredientName: 'Amoxicillin',
-//         description: 'Beta-lactam antibiotic',
-//       },
-//       {
-//         ingredientName: 'Metformin',
-//         description: 'Antidiabetic medication',
-//       },
-//       {
-//         ingredientName: 'Amlodipine',
-//         description: 'Calcium channel blocker',
-//       },
-//     ],
-//     skipDuplicates: true,
-//   });
-// }
-
-// async function main() {
-//   console.log('Start seeding...');
-
-//   await seedDosageForms();
-//   await seedDrugCategories();
-//   await seedActiveIngredients();
-
-//   console.log('Seeding completed successfully.');
-// }
-
-// main()
-//   .catch((error) => {
-//     console.error('Seeding failed:', error);
-//     process.exit(1);
-//   })
-//   .finally(async () => {
-//     await prisma.$disconnect();
-//   });
-
 import { createPrismaSeedClient } from './seeds/shared/prisma-client';
 import {
   hashSeedPassword,
@@ -166,7 +33,7 @@ async function main() {
   await seedDrugCategories(prisma);
   await seedActiveIngredients(prisma);
   // await seedGeneralDrugs(prisma);
-  await seedDrugCatalog(prisma);
+  // await seedDrugCatalog(prisma);
 
   await seedSubscriptionPlans(prisma);
 
@@ -197,30 +64,30 @@ async function main() {
     throw new Error('SEED_TARGET_PHARMACY_ID must be a positive integer.');
   }
 
-  const pharmacyDrugsResult = await seedPharmacyDrugCatalog(
-    prisma,
-    targetPharmacyId,
-  );
+  // const pharmacyDrugsResult = await seedPharmacyDrugCatalog(
+  //   prisma,
+  //   targetPharmacyId,
+  // );
 
-  const pharmacyBatchesResult = await seedPharmacyDrugBatches(
-    prisma,
-    targetPharmacyId,
-  );
-  console.log('\nSeeded pharmacy batches:');
+  // const pharmacyBatchesResult = await seedPharmacyDrugBatches(
+  //   prisma,
+  //   targetPharmacyId,
+  // );
+  // console.log('\nSeeded pharmacy batches:');
 
-  console.table([
-    {
-      pharmacyId: targetPharmacyId,
+  // console.table([
+  //   {
+  //     pharmacyId: targetPharmacyId,
 
-      pharmacyDrugs: pharmacyBatchesResult.pharmacyDrugsCount,
+  //     pharmacyDrugs: pharmacyBatchesResult.pharmacyDrugsCount,
 
-      expectedBatches: pharmacyBatchesResult.expectedBatchesCount,
+  //     expectedBatches: pharmacyBatchesResult.expectedBatchesCount,
 
-      createdBatches: pharmacyBatchesResult.createdBatchesCount,
+  //     createdBatches: pharmacyBatchesResult.createdBatchesCount,
 
-      skippedBatches: pharmacyBatchesResult.skippedBatchesCount,
-    },
-  ]);
+  //     skippedBatches: pharmacyBatchesResult.skippedBatchesCount,
+  //   },
+  // ]);
   console.log('Seed completed successfully.');
 
   console.log('\nUser accounts:');
