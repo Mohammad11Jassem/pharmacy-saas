@@ -178,7 +178,7 @@ export class SmsService {
   ): Promise<SmsSendResult> {
     return this.sendSms(
       phone,
-      `MediXa: تم إنشاء صيدلية ${pharmacyName} بنجاح. رمز تسجيل الدخول للصيدلية هو: ${loginCode}`,
+      `MediXa: تم إنشاء صيدلية ${pharmacyName} بنجاح. رقم التسجيل  للصيدلية هو: ${loginCode}`,
     );
   }
 }

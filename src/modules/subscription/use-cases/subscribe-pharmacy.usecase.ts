@@ -689,17 +689,47 @@ export class SubscribePharmacyUseCase {
       throw new BadRequestException('Invalid subscription start date.');
     }
 
+    /**
+     * نحول التاريخين إلى بداية اليوم.
+     *
+     * مثال:
+     * now      = 2026-08-22 14:30
+     * startsAt = 2026-08-22 08:00
+     *
+     * كلاهما يصبح:
+     * 2026-08-22 00:00
+     *
+     * وبالتالي يعتبر الاشتراك ACTIVE.
+     */
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    const subscriptionStartDay = new Date(
+      startsAt.getFullYear(),
+      startsAt.getMonth(),
+      startsAt.getDate(),
+    );
+
+    /**
+     * لا نسمح بتاريخ قبل اليوم.
+     *
+     * الساعة لا تهم.
+     */
+    if (subscriptionStartDay.getTime() < today.getTime()) {
+      throw new BadRequestException(
+        'Subscription start date cannot be before today.',
+      );
+    }
     // =========================================================
     // STEP 4
     // منع إنشاء اشتراك يبدأ في الماضي
     // =========================================================
 
+    // if (startsAt.getTime() < now.getTime()) {
+    //   throw new BadRequestException(
+    //     'Subscription start date cannot be in the past.',
+    //   );
+    // }
 
-    if (startsAt.getTime() < now.getTime()) {
-      throw new BadRequestException(
-        'Subscription start date cannot be in the past.',
-      );
-    }
     // const todayUtc = Date.UTC(
     //   now.getUTCFullYear(),
     //   now.getUTCMonth(),
@@ -717,7 +747,6 @@ export class SubscribePharmacyUseCase {
     //     'Subscription start date cannot be before today.',
     //   );
     // }
-
 
     // =========================================================
     // STEP 5
@@ -1064,11 +1093,15 @@ export class SubscribePharmacyUseCase {
      *
      * ACTIVE
      */
-    const subscriptionStatus = 
-    // PharmacySubscriptionStatus.ACTIVE
-      startsAt.getTime() > now.getTime()
-        ? PharmacySubscriptionStatus.SCHEDULED
-        : PharmacySubscriptionStatus.ACTIVE;
+    // const subscriptionStatus =
+    //   // PharmacySubscriptionStatus.ACTIVE
+    //   startsAt.getTime() > now.getTime()
+    //     ? PharmacySubscriptionStatus.SCHEDULED
+    //     : PharmacySubscriptionStatus.ACTIVE;
+    const subscriptionStatus =
+      subscriptionStartDay.getTime() === today.getTime()
+        ? PharmacySubscriptionStatus.ACTIVE
+        : PharmacySubscriptionStatus.SCHEDULED;
 
     // =========================================================
     // STEP 11

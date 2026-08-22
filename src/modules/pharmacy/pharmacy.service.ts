@@ -103,11 +103,11 @@ export class PharmacyService {
       };
     });
     // later test it
-    // await this.sendPharmacyLoginCodeSms(
-    //   result.owner.userId,
-    //   result.pharmacy.pharmacyName,
-    //   result.credential.loginCode,
-    // );
+    await this.sendPharmacyLoginCodeSms(
+      result.owner.userId,
+      result.pharmacy.pharmacyName,
+      result.credential.loginCode,
+    );
     return this.pharmacyAccountResponseMapper.toResponse(result);
   }
   private async sendPharmacyLoginCodeSms(
@@ -197,7 +197,7 @@ export class PharmacyService {
         healthDirectorate: dto.healthDirectorate,
         areaName: dto.areaName,
         addressText: dto.addressText,
-        status: 'PENDING',
+        status: 'ACTIVE',
         openingDate: dto.openingDate ? new Date(dto.openingDate) : undefined,
       },
     });
