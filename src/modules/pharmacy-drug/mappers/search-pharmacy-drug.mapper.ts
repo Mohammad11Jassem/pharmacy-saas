@@ -4,6 +4,7 @@ export function buildSearchPharmacyDrugSelect(today: Date) {
   return {
     pharmacyDrugId: true,
     drugId: true,
+    netPrice: true,
 
     batches: {
       where: {
@@ -36,6 +37,7 @@ export function buildSearchPharmacyDrugSelect(today: Date) {
             tradeName: true,
             barcode: true,
             unitsPerBox: true,
+            netPrice: true,
           },
         },
 
@@ -57,6 +59,7 @@ export const searchGeneralDrugSelect = {
   drugId: true,
   tradeName: true,
   barcode: true,
+  netPrice: true,
 } satisfies Prisma.GeneralDrugSelect;
 
 export type SearchPharmacyDrugPayload = Prisma.PharmacyDrugGetPayload<{
@@ -76,7 +79,7 @@ export function mapPharmacyDrugForSearch(
   const unitsPerBox =
     generalDrug?.unitsPerBox ?? privateDrug?.unitsPerBox ?? null;
 
-    // to make sure that the available quantity is not negative, we use Math.max to ensure that the result is at least 0. This prevents any potential issues with negative quantities in the database.
+  // to make sure that the available quantity is not negative, we use Math.max to ensure that the result is at least 0. This prevents any potential issues with negative quantities in the database.
   const availableQuantity = pharmacyDrug.batches.reduce(
     (sum, batch) =>
       sum + Math.max(batch.initialQuantity - batch.soldQuantity, 0),
@@ -87,6 +90,8 @@ export function mapPharmacyDrugForSearch(
     unitsPerBox && unitsPerBox > 0
       ? Number((availableQuantity / unitsPerBox).toFixed(2))
       : null;
+
+  const netPrice = generalDrug?.netPrice ?? pharmacyDrug.netPrice ?? 0;
 
   return {
     pharmacyDrugId: pharmacyDrug.pharmacyDrugId,
@@ -106,6 +111,8 @@ export function mapPharmacyDrugForSearch(
     availableQuantity,
 
     availableBoxCount,
+
+    netPrice,
   };
 }
 

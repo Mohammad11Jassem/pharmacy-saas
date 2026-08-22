@@ -18,13 +18,13 @@ import { ActiveUser } from '../../iam/decorators/active-user.decorator';
 import { CurrentPharmacy } from '../../common/decorators/current-pharmacy.decorator';
 import { GetSaleInvoicesDto } from './dto/get-sale-invoices.dto';
 import { LogInvoiceActivity } from '../invoice-activity/decorators/log-invoice-activity.decorator';
+import { UpdateSaleInvoicePaymentDto } from './dto/update-sale-invoice-payment.dto';
 
 @Roles(AccountType.PHARMACY)
 @Controller('sale-invoice')
 export class SaleInvoiceController {
   constructor(private readonly saleInvoiceService: SaleInvoiceService) {}
 
-  
   @Post('create')
   @LogInvoiceActivity('تم إنشاء فاتورة بيع')
   create(
@@ -63,16 +63,16 @@ export class SaleInvoiceController {
     return this.saleInvoiceService.findOne(pharmacyId, saleInvoiceId);
   }
 
-  @Patch(':id')
-  update(
-    @Param('id') id: string,
-    @Body() updateSaleInvoiceDto: UpdateSaleInvoiceDto,
+  @Patch(':saleInvoiceId/payment')
+  updatePayment(
+    @CurrentPharmacy() pharmacyId: number,
+    @Param('saleInvoiceId', ParseIntPipe) saleInvoiceId: number,
+    @Body() dto: UpdateSaleInvoicePaymentDto,
   ) {
-    return this.saleInvoiceService.update(+id, updateSaleInvoiceDto);
-  }
-
-  @Delete(':id')
-  remove(@Param('id') id: string) {
-    return this.saleInvoiceService.remove(+id);
+    return this.saleInvoiceService.updatePayment(
+      pharmacyId,
+      saleInvoiceId,
+      dto,
+    );
   }
 }

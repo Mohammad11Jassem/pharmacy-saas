@@ -35,6 +35,7 @@ export type PostSaleInvoiceCommand = {
   patient?: PostSaleInvoicePatientCommand;
   invoiceDate?: string | Date;
   paymentStatus?: PaymentStatus;
+  paidAmount?: number;
   saleType: SaleType;
   discount?: number;
   notes?: string;

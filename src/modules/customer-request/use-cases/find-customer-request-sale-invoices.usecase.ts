@@ -1,5 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import {
+  PharmacyInvoiceStatus,
   PharmacyInvoiceType,
   Prisma,
 } from '../../../generated/prisma/client';
@@ -9,6 +10,7 @@ import {
   toPaginatedResult,
 } from '../../../common/pagination/pagination.util';
 import { GetCustomerRequestSaleInvoicesDto } from '../dto/get-customer-request-sale-invoices.dto';
+import { calculateSalePaymentSummary } from '../../sale-invoice/utils/sale-payment-summary.util';
 
 @Injectable()
 export class FindCustomerRequestSaleInvoicesUseCase {
@@ -58,6 +60,7 @@ export class FindCustomerRequestSaleInvoicesUseCase {
           subtotal: true,
           discount: true,
           totalAmount: true,
+          paidAmount: true,
           createdAt: true,
           updatedAt: true,
           pharmacyInvoice: {
@@ -65,6 +68,16 @@ export class FindCustomerRequestSaleInvoicesUseCase {
               invoiceDate: true,
               status: true,
               notes: true,
+            },
+          },
+          returns: {
+            where: {
+              pharmacyInvoice: {
+                status: PharmacyInvoiceStatus.POSTED,
+              },
+            },
+            select: {
+              subtotalRefund: true,
             },
           },
           _count: {
@@ -89,21 +102,35 @@ export class FindCustomerRequestSaleInvoicesUseCase {
       this.prisma.saleInvoice.count({ where }),
     ]);
 
-    const mappedSaleInvoices = saleInvoices.map(
-      ({ pharmacyInvoice, _count, ...saleInvoice }) => ({
+    // const mappedSaleInvoices = saleInvoices.map(
+    //   ({ pharmacyInvoice, _count, ...saleInvoice }) => ({
+    //     ...saleInvoice,
+    //     invoiceDate: pharmacyInvoice.invoiceDate,
+    //     invoiceStatus: pharmacyInvoice.status,
+    //     notes: pharmacyInvoice.notes,
+    //     itemsCount: _count.items,
+    //   }),
+    // );
+
+    const mappedSaleInvoices = saleInvoices.map((invoice) => {
+      const { pharmacyInvoice, returns, _count, ...saleInvoice } = invoice;
+
+      const paymentSummary = calculateSalePaymentSummary(
+        invoice.totalAmount,
+        invoice.paidAmount,
+        returns.map((returnInvoice) => returnInvoice.subtotalRefund),
+      );
+
+      return {
         ...saleInvoice,
+        ...paymentSummary,
         invoiceDate: pharmacyInvoice.invoiceDate,
         invoiceStatus: pharmacyInvoice.status,
         notes: pharmacyInvoice.notes,
         itemsCount: _count.items,
-      }),
-    );
+      };
+    });
 
-    return toPaginatedResult(
-      mappedSaleInvoices,
-      total,
-      page,
-      limit,
-    );
+    return toPaginatedResult(mappedSaleInvoices, total, page, limit);
   }
 }

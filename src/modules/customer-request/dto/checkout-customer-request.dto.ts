@@ -25,6 +25,12 @@ export class CheckoutCustomerRequestDto {
   @IsEnum(PaymentStatus)
   paymentStatus?: PaymentStatus;
 
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @IsOptional()
+  paidAmount?: number;
+
   @IsOptional()
   @Type(() => Number)
   @IsNumber({ maxDecimalPlaces: 2 })

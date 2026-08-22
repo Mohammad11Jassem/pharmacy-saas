@@ -43,6 +43,12 @@ export class CreateSaleInvoiceDto {
   @IsOptional()
   paymentStatus?: PaymentStatus;
 
+  @Type(() => Number)
+  @IsNumber({ maxDecimalPlaces: 2 })
+  @Min(0)
+  @IsOptional()
+  paidAmount?: number;
+
   @IsEnum(SaleType)
   @IsOptional()
   saleType?: SaleType;

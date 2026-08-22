@@ -9,6 +9,7 @@ import { FindSaleInvoiceByIdUseCase } from './use-cases/find-sale-invoice-by-id.
 import { FindSaleInvoiceBatchesUseCase } from './use-cases/find-sale-invoice-batches.usecase';
 import { SaleInvoicePostingService } from './services/sale-invoice-posting.service';
 import { NotificationModule } from '../../notification/notification.module';
+import { UpdateSaleInvoicePaymentUseCase } from './use-cases/update-sale-invoice-payment.usecase';
 
 
 @Module({
@@ -22,6 +23,7 @@ import { NotificationModule } from '../../notification/notification.module';
     FindAllSaleInvoicesUseCase,
     FindSaleInvoiceByIdUseCase,
     FindSaleInvoiceBatchesUseCase,
+    UpdateSaleInvoicePaymentUseCase,
   ],
   exports: [SaleInvoicePostingService],
 })

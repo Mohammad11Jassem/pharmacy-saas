@@ -3,14 +3,21 @@ import {
   IsArray,
   IsDateString,
   IsInt,
+  IsNotEmpty,
   IsOptional,
   IsString,
+  MaxLength,
   Min,
   ValidateNested,
 } from 'class-validator';
 import { CreatePurchaseOrderItemDto } from '../../purchase-order-item/dto/create-purchase-order-item.dto';
 
 export class CreatePurchaseOrderDto {
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(150)
+  idempotencyKey: string;
+
   @Type(() => Number)
   @IsInt()
   @Min(1)

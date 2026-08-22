@@ -21,6 +21,7 @@ export class CreateSaleInvoiceUseCase {
         patient: dto.patient,
         invoiceDate: dto.invoiceDate,
         paymentStatus: dto.paymentStatus,
+        paidAmount: dto.paidAmount,
         saleType: dto.saleType ?? SaleType.NORMAL,
         discount: dto.discount,
         notes: dto.notes,
