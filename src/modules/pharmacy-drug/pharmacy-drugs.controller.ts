@@ -22,6 +22,7 @@ import { SearchPharmacyDrugByNameDto } from './dto/search-pharmacy-drug-by-name.
 import { SearchMyPharmacyDrugsByNameDto } from './dto/search-my-pharmacy-drugs-by-name.dto';
 import { ListDrugAlternativesQueryDto } from './dto/list-drug-alternatives-query.dto';
 import { SearchPharmacyDrugsByIngredientsDto } from './dto/search-pharmacy-drugs-by-ingredients.dto';
+import { SearchSimilarPharmacyDrugNamesDto } from './dto/search-similar-pharmacy-drug-names.dto';
 @Roles(AccountType.PHARMACY)
 @Controller('pharmacy-drugs')
 export class PharmacyDrugsController {
@@ -171,13 +172,23 @@ export class PharmacyDrugsController {
     );
   }
 
-
   @Post('search-by-ingredients')
   searchPharmacyDrugsByIngredients(
     @ActiveUser('sub') pharmacyId: number,
     @Body() dto: SearchPharmacyDrugsByIngredientsDto,
   ) {
     return this.pharmacyDrugService.searchPharmacyDrugsByIngredients(
+      pharmacyId,
+      dto,
+    );
+  }
+
+  @Get('search-my-drugs/similar-names')
+  searchSimilarPharmacyDrugNames(
+    @ActiveUser('sub') pharmacyId: number,
+    @Query() dto: SearchSimilarPharmacyDrugNamesDto,
+  ) {
+    return this.pharmacyDrugService.searchSimilarPharmacyDrugNames(
       pharmacyId,
       dto,
     );

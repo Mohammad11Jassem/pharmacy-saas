@@ -96,9 +96,12 @@ export class GeneralDrugsService {
     // isRx?: boolean;
     // dosageFormId?: number;
     searchTerm?: string; // search by tradeName or barcode
-  }){
-    const { page, limit, searchTerm
-      // isActive, isRx, dosageFormId, searchTerm 
+  }) {
+    const {
+      page,
+      limit,
+      searchTerm,
+      // isActive, isRx, dosageFormId, searchTerm
     } = options;
     const skip = (page - 1) * limit;
 
@@ -150,7 +153,88 @@ export class GeneralDrugsService {
       hasPreviousPage,
     };
   }
+  async findAllForPharmacy(
+    pharmacyId: number,
+    options: {
+      page: number;
+      limit: number;
+      searchTerm?: string;
+    },
+  ) {
+    const { page, limit, searchTerm } = options;
 
+    const skip = (page - 1) * limit;
+
+    const where: Prisma.GeneralDrugWhereInput = {
+      /*
+       * Return only drugs that are not already
+       * added to this pharmacy.
+       */
+      drug: {
+        pharmacyDrugs: {
+          none: {
+            pharmacyId,
+          },
+        },
+      },
+    };
+
+    if (searchTerm?.trim()) {
+      const search = searchTerm.trim();
+
+      where.OR = [
+        {
+          tradeName: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+
+        {
+          barcode: {
+            contains: search,
+            mode: 'insensitive',
+          },
+        },
+      ];
+    }
+
+    const [drugs, total] = await Promise.all([
+      this.prisma.generalDrug.findMany({
+        where,
+
+        skip,
+
+        take: limit,
+
+        orderBy: {
+          createdAt: 'desc',
+        },
+      }),
+
+      this.prisma.generalDrug.count({
+        where,
+      }),
+    ]);
+
+    const pages = Math.ceil(total / limit);
+
+    const hasNextPage = page < pages;
+
+    const hasPreviousPage = page > 1;
+
+    return {
+      data: drugs,
+
+      page,
+      limit,
+      total,
+      pages,
+
+      hasNextPage,
+      hasPreviousPage,
+    };
+  }
 
   async findOne(id: number) {
     const drug = await this.prisma.generalDrug.findUnique({
@@ -424,5 +508,3 @@ export class GeneralDrugsService {
     };
   }
 }
-
-

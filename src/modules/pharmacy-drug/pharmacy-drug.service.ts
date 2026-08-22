@@ -23,6 +23,8 @@ import { GetPharmacyDrugAlternativesUseCase } from './use-cases/get-pharmacy-dru
 import { ListDrugAlternativesQueryDto } from './dto/list-drug-alternatives-query.dto';
 import { SearchPharmacyDrugsByIngredientsUseCase } from './use-cases/search-pharmacy-drugs-by-ingredients.usecase';
 import { SearchPharmacyDrugsByIngredientsDto } from './dto/search-pharmacy-drugs-by-ingredients.dto';
+import { SearchSimilarPharmacyDrugNamesDto } from './dto/search-similar-pharmacy-drug-names.dto';
+import { SearchSimilarPharmacyDrugNamesUseCase } from './use-cases/search-similar-pharmacy-drug-names.usecase';
 
 @Injectable()
 export class PharmacyDrugService {
@@ -51,6 +53,7 @@ export class PharmacyDrugService {
     private readonly searchMyPharmacyDrugsByNameUseCase: SearchMyPharmacyDrugsByNameUseCase,
     private readonly getPharmacyDrugAlternativesUseCase: GetPharmacyDrugAlternativesUseCase,
     private readonly searchPharmacyDrugsByIngredientsUseCase: SearchPharmacyDrugsByIngredientsUseCase,
+    private readonly searchSimilarPharmacyDrugNamesUseCase: SearchSimilarPharmacyDrugNamesUseCase,
   ) {}
 
   addGeneralDrug(pharmacyId: number, dto: AddGeneralDrugDto) {
@@ -156,5 +159,12 @@ export class PharmacyDrugService {
       pharmacyId,
       dto,
     );
+  }
+
+  searchSimilarPharmacyDrugNames(
+    pharmacyId: number,
+    dto: SearchSimilarPharmacyDrugNamesDto,
+  ) {
+    return this.searchSimilarPharmacyDrugNamesUseCase.execute(pharmacyId, dto);
   }
 }

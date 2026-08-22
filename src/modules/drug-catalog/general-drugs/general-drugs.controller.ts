@@ -18,6 +18,7 @@ import { Auth } from '../../../iam/authentication/decorators/auth.decorator';
 import { AuthType } from '../../../iam/authentication/enums/auth-type.enum';
 import { AccountType } from '../../../generated/prisma/enums';
 import { Roles } from '../../../iam/authorization/decorators/roles.decorator';
+import { ActiveUser } from '../../../iam/decorators/active-user.decorator';
 
 @Auth(AuthType.Bearer)
 @Roles(AccountType.ADMIN, AccountType.MEDICAL_TEAM, AccountType.PHARMACY)
@@ -32,22 +33,42 @@ export class GeneralDrugsController {
 
   @Get()
   async findAll(
-    @Query('page') page?: string,
-    @Query('limit') limit?: string,
-    // @Query('isActive') isActive?: string,
-    // @Query('isRx') isRx?: string,
-    // @Query('dosageFormId', new ParseIntPipe({ optional: true }))
-    // dosageFormId?: number,
-    @Query('searchTerm') searchTerm?: string,
+    @ActiveUser('sub')
+    userId: number,
+
+    @ActiveUser('accountType')
+    accountType: AccountType,
+
+    @Query('page')
+    page?: string,
+
+    @Query('limit')
+    limit?: string,
+
+    @Query('searchTerm')
+    searchTerm?: string,
   ) {
-    return this.generalDrugsService.findAll({
+    const options = {
       page: parseInt(page || '1', 10),
+
       limit: parseInt(limit || '10', 10),
-      // isActive: isActive ? isActive === 'true' : undefined,
-      // isRx: isRx ? isRx === 'true' : undefined,
-      // dosageFormId,
+
       searchTerm,
-    });
+    };
+
+    /*
+     * For a pharmacy account,
+     * sub represents pharmacyId.
+     */
+    if (accountType === AccountType.PHARMACY) {
+      return this.generalDrugsService.findAllForPharmacy(userId, options);
+    }
+
+    /*
+     * ADMIN and MEDICAL_TEAM
+     * receive the normal list.
+     */
+    return this.generalDrugsService.findAll(options);
   }
 
   @Get('barcode/:barcode')

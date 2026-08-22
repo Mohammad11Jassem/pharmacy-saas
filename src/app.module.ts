@@ -122,6 +122,7 @@ import { RequestLoggerInterceptor } from './common/interceptors/request-logger.i
     AnalyticsModule,
     GeneralDrugPriceListModule,
     NotificationModule,
+    // DatabaseBackupModule,
   ],
   providers: [
     {

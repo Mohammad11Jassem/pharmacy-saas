@@ -6,7 +6,7 @@ import {
 import { CreatePurchaseOrderDto } from './dto/create-purchase-order.dto';
 import { UpdatePurchaseOrderDto } from './dto/update-purchase-order.dto';
 import { CreatePurchaseOrderItemDto } from '../purchase-order-item/dto/create-purchase-order-item.dto';
-import { Prisma } from '../../generated/prisma/client';
+import { OrderStatus, Prisma } from '../../generated/prisma/client';
 import { PrismaService } from '../../prisma/prisma.service';
 import { PurchaseOrderFilterDto } from './dto/create-purchase-order-filter.dto';
 import {
@@ -372,7 +372,32 @@ export class PurchaseOrderService {
     if (!order) {
       throw new NotFoundException('Purchase order not found');
     }
+    /*
+     * 2. إنشاء ملف Excel أولاً
+     *
+     * مهم:
+     * لا نغيّر حالة الطلبية قبل هذا السطر،
+     * لأنه إذا فشل إنشاء الملف لا نريد اعتبار الطلبية CONFIRMED.
+     */
+    const file = await this.excelService.generate(order);
 
-    return this.excelService.generate(order);
+    /*
+     * 3. بعد نجاح إنشاء الملف نغيّر حالة الطلبية إلى CONFIRMED
+     */
+    await this.prisma.purchaseOrder.update({
+      where: {
+        purchaseOrderId,
+      },
+
+      data: {
+        orderStatus: OrderStatus.CONFIRMED,
+      },
+    });
+
+    /*
+     * 4. إعادة ملف Excel إلى Controller
+     */
+    return file;
+    // return this.excelService.generate(order);
   }
 }
