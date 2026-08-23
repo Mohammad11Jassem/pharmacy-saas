@@ -14,6 +14,11 @@ import {
   calculateFinalPrice,
   decimalToNumber,
 } from '../helpers/subscription-pricing.helper';
+import {
+  addCalendarDays,
+  compareCalendarDates,
+  getSubscriptionToday,
+} from '../helpers/subscription-date.helper';
 
 @Injectable()
 export class ListPharmaciesWithOffersUseCase {
@@ -24,7 +29,8 @@ export class ListPharmaciesWithOffersUseCase {
   async execute(
     dto: ListSubscriptionPharmaciesDto,
   ) {
-    const now = new Date();
+    const today = getSubscriptionToday();
+    const tomorrow = addCalendarDays(today, 1);
 
     const {
       page,
@@ -95,14 +101,11 @@ export class ListPharmaciesWithOffersUseCase {
             subscriptions: {
               where: {
                 endsAt: {
-                  gt: now,
+                  gte: tomorrow,
                 },
 
                 status: {
-                  in: [
-                    PharmacySubscriptionStatus.ACTIVE,
-                    PharmacySubscriptionStatus.SCHEDULED,
-                  ],
+                  not: PharmacySubscriptionStatus.CANCELLED,
                 },
               },
 
@@ -140,11 +143,11 @@ export class ListPharmaciesWithOffersUseCase {
                 redeemedAt: null,
 
                 validFrom: {
-                  lte: now,
+                  lt: tomorrow,
                 },
 
                 validUntil: {
-                  gte: now,
+                  gte: today,
                 },
 
                 offer: {
@@ -154,11 +157,11 @@ export class ListPharmaciesWithOffersUseCase {
                   isActive: true,
 
                   startsAt: {
-                    lte: now,
+                    lt: tomorrow,
                   },
 
                   endsAt: {
-                    gte: now,
+                    gte: today,
                   },
                 },
               },
@@ -221,21 +224,36 @@ export class ListPharmaciesWithOffersUseCase {
     const items =
       pharmacies.map(
         (pharmacy) => {
-          const activeSubscription =
+          const activeSubscriptionRow =
             pharmacy.subscriptions.find(
               (subscription) =>
-                subscription.startsAt <=
-                  now &&
-                subscription.endsAt >
-                  now,
+                compareCalendarDates(subscription.startsAt, today) <= 0 &&
+                compareCalendarDates(subscription.endsAt, today) > 0,
             ) ?? null;
 
-          const nextSubscription =
+          const nextSubscriptionRow =
             pharmacy.subscriptions.find(
               (subscription) =>
-                subscription.startsAt >
-                now,
+                compareCalendarDates(subscription.startsAt, today) > 0,
             ) ?? null;
+
+          /*
+           * Response status is derived from CALENDAR DATES, not blindly
+           * copied from a possibly stale stored status.
+           */
+          const activeSubscription = activeSubscriptionRow
+            ? {
+                ...activeSubscriptionRow,
+                status: PharmacySubscriptionStatus.ACTIVE,
+              }
+            : null;
+
+          const nextSubscription = nextSubscriptionRow
+            ? {
+                ...nextSubscriptionRow,
+                status: PharmacySubscriptionStatus.SCHEDULED,
+              }
+            : null;
 
           const availablePrivateOffers =
             pharmacy.offerGrants.map(

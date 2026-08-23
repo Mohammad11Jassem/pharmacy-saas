@@ -15,6 +15,10 @@ import {
   calculateFinalPrice,
   decimalToNumber,
 } from '../helpers/subscription-pricing.helper';
+import {
+  addCalendarDays,
+  getSubscriptionToday,
+} from '../helpers/subscription-date.helper';
 
 @Injectable()
 export class ListPrivateOffersUseCase {
@@ -26,7 +30,8 @@ export class ListPrivateOffersUseCase {
     pharmacyId: number,
     planId: number,
   ) {
-    const now = new Date();
+    const today = getSubscriptionToday();
+    const tomorrow = addCalendarDays(today, 1);
 
     /*
      * نتحقق أولاً من وجود الصيدلية.
@@ -88,11 +93,11 @@ export class ListPrivateOffersUseCase {
               isActive: true,
 
               startsAt: {
-                lte: now,
+                lt: tomorrow,
               },
 
               endsAt: {
-                gte: now,
+                gte: today,
               },
 
               grants: {
@@ -102,11 +107,11 @@ export class ListPrivateOffersUseCase {
                   redeemedAt: null,
 
                   validFrom: {
-                    lte: now,
+                    lt: tomorrow,
                   },
 
                   validUntil: {
-                    gte: now,
+                    gte: today,
                   },
                 },
               },
@@ -142,11 +147,11 @@ export class ListPrivateOffersUseCase {
                   redeemedAt: null,
 
                   validFrom: {
-                    lte: now,
+                    lt: tomorrow,
                   },
 
                   validUntil: {
-                    gte: now,
+                    gte: today,
                   },
                 },
 

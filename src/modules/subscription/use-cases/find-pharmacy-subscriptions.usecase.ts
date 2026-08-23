@@ -13,6 +13,11 @@ import {
 
 import { decimalToNumber } from '../helpers/subscription-pricing.helper';
 import { ListPharmacySubscriptionsDto } from '../dto/list-pharmacy-subscriptions.dto';
+import {
+  addCalendarDays,
+  compareCalendarDates,
+  getSubscriptionToday,
+} from '../helpers/subscription-date.helper';
 
 /*
  * Centralized Prisma select.
@@ -126,6 +131,8 @@ export class FindPharmacySubscriptionsUseCase {
      * items during the same request.
      */
     const now = new Date();
+    const today = getSubscriptionToday(now);
+    const tomorrow = addCalendarDays(today, 1);
 
     // =========================================================
     // STEP 1
@@ -223,15 +230,21 @@ export class FindPharmacySubscriptionsUseCase {
               /*
                * The subscription has already started.
                */
+              /*
+               * Calendar-date rule: startsAt DATE <= today.
+               * `< tomorrow` also includes legacy rows that have a time
+               * later than 00:00 on today's date.
+               */
               startsAt: {
-                lte: now,
+                lt: tomorrow,
               },
 
               /*
-               * The subscription has not ended yet.
+               * Subscription end date is exclusive.
+               * endsAt DATE > today.
                */
               endsAt: {
-                gt: now,
+                gte: tomorrow,
               },
             },
 
@@ -260,7 +273,7 @@ export class FindPharmacySubscriptionsUseCase {
     // =========================================================
 
     const mappedSubscriptions = subscriptions.map((subscription) =>
-      this.mapSubscription(subscription, now),
+      this.mapSubscription(subscription, today),
     );
 
     // =========================================================
@@ -276,9 +289,8 @@ export class FindPharmacySubscriptionsUseCase {
      * 3- The next subscription is still scheduled.
      * 4- The current subscription was cancelled.
      */
-    // console.log('currentSubscription', currentSubscription)
     const mappedCurrentSubscription = currentSubscription
-      ? this.mapSubscription(currentSubscription, now)
+      ? this.mapSubscription(currentSubscription, today)
       : null;
 
     // =========================================================
@@ -335,7 +347,6 @@ export class FindPharmacySubscriptionsUseCase {
     subscription: SelectedPharmacySubscription,
     now: Date,
   ): PharmacySubscriptionHistoryItemResponseDto {
-      console.log('subscription.status', subscription.status)
     return {
       pharmacySubscriptionId: subscription.pharmacySubscriptionId,
 
@@ -343,14 +354,13 @@ export class FindPharmacySubscriptionsUseCase {
        * Return the effective status according
        * to the subscription dates.
        */
-      // status: this.resolveEffectiveStatus(
-      //   subscription.status,
-      //   subscription.startsAt,
-      //   subscription.endsAt,
-      //   now,
-      // ),
-      status: subscription.status,
-      
+      status: this.resolveEffectiveStatus(
+        subscription.status,
+        subscription.startsAt,
+        subscription.endsAt,
+        now,
+      ),
+
 
       startsAt: subscription.startsAt,
 
@@ -413,7 +423,7 @@ export class FindPharmacySubscriptionsUseCase {
     /*
      * The subscription starts in the future.
      */
-    if (startsAt.getTime() > now.getTime()) {
+    if (compareCalendarDates(startsAt, now) > 0) {
       return PharmacySubscriptionStatus.SCHEDULED;
     }
 
@@ -423,7 +433,7 @@ export class FindPharmacySubscriptionsUseCase {
      * When now equals endsAt,
      * the subscription is expired.
      */
-    if (endsAt.getTime() <= now.getTime()) {
+    if (compareCalendarDates(endsAt, now) <= 0) {
       return PharmacySubscriptionStatus.EXPIRED;
     }
 

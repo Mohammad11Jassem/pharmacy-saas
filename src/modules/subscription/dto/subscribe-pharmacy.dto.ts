@@ -1,5 +1,6 @@
 import { Type } from 'class-transformer';
 import {
+  IsDateString,
   IsEnum,
   IsInt,
   IsISO8601,
@@ -29,12 +30,11 @@ export class SubscribePharmacyDto {
   activationMode: SubscriptionActivationMode =
     SubscriptionActivationMode.AFTER_CURRENT;
 
-    /*
-   * الإداري هو الذي يحدد متى يبدأ الاشتراك.
-   *
-   * مثال:
-   * 2026-09-01T00:00:00.000Z
+  /*
+   * تاريخ بداية الاشتراك (Calendar Date).
+   * يفضل إرسال: 2026-09-01
+   * وإذا وصل ISO DateTime فسيتم تجاهل الوقت بالكامل.
    */
-  @IsISO8601()
+  @IsDateString()
   startsAt: string;
 }

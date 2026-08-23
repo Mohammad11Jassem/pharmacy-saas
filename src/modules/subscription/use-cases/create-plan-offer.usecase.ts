@@ -20,6 +20,7 @@ import {
   calculateFinalPrice,
   decimalToNumber,
 } from '../helpers/subscription-pricing.helper';
+import { toDateOnly } from '../helpers/subscription-date.helper';
 
 @Injectable()
 export class CreatePlanOfferUseCase {
@@ -116,24 +117,30 @@ export class CreatePlanOfferUseCase {
     // تحويل تواريخ العرض إلى Date
     // =========================================================
 
-    const startsAt = new Date(dto.startsAt);
+    let startsAt: Date;
+    let endsAt: Date;
 
-    const endsAt = new Date(dto.endsAt);
-
-    /*
-     * حماية إضافية للتواريخ.
-     */
-    if (Number.isNaN(startsAt.getTime()) || Number.isNaN(endsAt.getTime())) {
+    try {
+      startsAt = toDateOnly(dto.startsAt);
+      endsAt = toDateOnly(dto.endsAt);
+    } catch {
       throw new BadRequestException('Invalid offer validity dates.');
     }
 
     // =========================================================
     // STEP 5
-    // التأكد أن endsAt بعد startsAt
+    // التأكد أن endsAt ليس قبل startsAt
     // =========================================================
 
-    if (endsAt.getTime() <= startsAt.getTime()) {
-      throw new BadRequestException('Offer end date must be after start date.');
+    /*
+     * Offer end date is inclusive, so a one-day offer is valid:
+     * startsAt = 2026-08-23
+     * endsAt   = 2026-08-23
+     */
+    if (endsAt.getTime() < startsAt.getTime()) {
+      throw new BadRequestException(
+        'Offer end date cannot be before start date.',
+      );
     }
 
     // =========================================================

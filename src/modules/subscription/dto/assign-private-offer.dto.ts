@@ -27,10 +27,12 @@ export class AssignPrivateOfferDto {
   @MaxLength(1000)
   grantReason?: string;
 
+  /* Calendar dates only; any time component is ignored. */
   @IsOptional()
   @IsISO8601()
   validFrom?: string;
 
+  /* End date is inclusive for the grant. */
   @IsOptional()
   @IsISO8601()
   validUntil?: string;

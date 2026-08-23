@@ -87,13 +87,14 @@ export class CreatePlanOfferDto {
   discountValue: number;
 
   /*
-   * متى يبدأ العرض.
+   * تاريخ بداية العرض فقط، بدون أي Business Logic للساعات.
+   * يفضل YYYY-MM-DD، وأي وقت ضمن ISO DateTime يتم تجاهله.
    */
   @IsISO8601()
   startsAt: string;
 
   /*
-   * متى ينتهي العرض.
+   * تاريخ نهاية العرض فقط. يوم النهاية مشمول ضمن صلاحية العرض.
    */
   @IsISO8601()
   endsAt: string;

@@ -8,6 +8,10 @@ import {
   calculateFinalPrice,
   decimalToNumber,
 } from '../helpers/subscription-pricing.helper';
+import {
+  addCalendarDays,
+  getSubscriptionToday,
+} from '../helpers/subscription-date.helper';
 
 @Injectable()
 export class ListPublicSubscriptionPlansUseCase {
@@ -16,7 +20,8 @@ export class ListPublicSubscriptionPlansUseCase {
   ) {}
 
   async execute() {
-    const now = new Date();
+    const today = getSubscriptionToday();
+    const tomorrow = addCalendarDays(today, 1);
 
     const plans =
       await this.prisma.subscriptionPlan.findMany({
@@ -46,11 +51,11 @@ export class ListPublicSubscriptionPlansUseCase {
               isActive: true,
 
               startsAt: {
-                lte: now,
+                lt: tomorrow,
               },
 
               endsAt: {
-                gte: now,
+                gte: today,
               },
             },
 

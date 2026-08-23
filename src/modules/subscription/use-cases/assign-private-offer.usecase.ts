@@ -6,6 +6,11 @@ import {
 import { UnitOfWork } from '../../../common/TransactionWrapper/unit-of-work';
 import { OfferScope } from '../../../generated/prisma/enums';
 import { AssignPrivateOfferDto } from '../dto/assign-private-offer.dto';
+import {
+  compareCalendarDates,
+  getSubscriptionToday,
+  toDateOnly,
+} from '../helpers/subscription-date.helper';
 
 @Injectable()
 export class AssignPrivateOfferUseCase {
@@ -20,6 +25,7 @@ export class AssignPrivateOfferUseCase {
     return this.unitOfWork.execute(
       async (tx) => {
         const now = new Date();
+        const today = getSubscriptionToday(now);
 
         const offer =
           await tx.planOffer.findUnique({
@@ -75,9 +81,7 @@ export class AssignPrivateOfferUseCase {
           );
         }
 
-        if (
-          offer.endsAt < now
-        ) {
+        if (compareCalendarDates(offer.endsAt, today) < 0) {
           throw new BadRequestException(
             'Offer has already expired.',
           );
@@ -90,52 +94,47 @@ export class AssignPrivateOfferUseCase {
         ];
 
         /*
-         * إذا العرض بدأ:
-         * validFrom الافتراضي = الآن
-         *
-         * إذا العرض لم يبدأ بعد:
-         * validFrom الافتراضي = offer.startsAt
+         * Calendar-date only:
+         * - if the offer already started, default validFrom = today.
+         * - otherwise default validFrom = offer start date.
          */
+        const offerStartDate = toDateOnly(offer.startsAt);
+        const offerEndDate = toDateOnly(offer.endsAt);
         const defaultValidFrom =
-          now > offer.startsAt
-            ? now
-            : offer.startsAt;
+          compareCalendarDates(today, offerStartDate) >= 0
+            ? today
+            : offerStartDate;
 
-        const validFrom =
-          dto.validFrom
-            ? new Date(
-                dto.validFrom,
-              )
+        let validFrom: Date;
+        let validUntil: Date;
+
+        try {
+          validFrom = dto.validFrom
+            ? toDateOnly(dto.validFrom)
             : defaultValidFrom;
 
-        /*
-         * إذا الإدارة لم تحدد validUntil
-         * فصلاحية الـ grant تنتهي مع العرض نفسه.
-         */
-        const validUntil =
-          dto.validUntil
-            ? new Date(
-                dto.validUntil,
-              )
-            : offer.endsAt;
+          validUntil = dto.validUntil
+            ? toDateOnly(dto.validUntil)
+            : offerEndDate;
+        } catch {
+          throw new BadRequestException('Invalid grant validity dates.');
+        }
 
-        if (
-          validUntil <= validFrom
-        ) {
+        /*
+         * Grant end date is inclusive, therefore a one-day grant is valid.
+         */
+        if (compareCalendarDates(validUntil, validFrom) < 0) {
           throw new BadRequestException(
-            'validUntil must be after validFrom.',
+            'validUntil cannot be before validFrom.',
           );
         }
 
         /*
-         * الـ Grant لا يمكن أن يعيش خارج
-         * مدة الـ PlanOffer.
+         * The grant cannot live outside the inclusive offer date range.
          */
         if (
-          validFrom <
-            offer.startsAt ||
-          validUntil >
-            offer.endsAt
+          compareCalendarDates(validFrom, offerStartDate) < 0 ||
+          compareCalendarDates(validUntil, offerEndDate) > 0
         ) {
           throw new BadRequestException(
             'Grant validity must be inside the offer validity period.',

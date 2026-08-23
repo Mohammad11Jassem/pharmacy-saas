@@ -11,6 +11,10 @@ import {
   calculateFinalPrice,
   decimalToNumber,
 } from '../helpers/subscription-pricing.helper';
+import {
+  compareCalendarDates,
+  getSubscriptionToday,
+} from '../helpers/subscription-date.helper';
 
 @Injectable()
 export class ListUnexpiredPrivateOffersUseCase {
@@ -19,7 +23,7 @@ export class ListUnexpiredPrivateOffersUseCase {
   ) {}
 
   async execute() {
-    const now = new Date();
+    const today = getSubscriptionToday();
 
     /*
      * نجلب كل العروض الخاصة غير المنتهية في النظام.
@@ -37,7 +41,7 @@ export class ListUnexpiredPrivateOffersUseCase {
            * - العروض المجدولة للمستقبل.
            */
           endsAt: {
-            gte: now,
+            gte: today,
           },
 
           /*
@@ -117,7 +121,7 @@ export class ListUnexpiredPrivateOffersUseCase {
        * - أم مجدول للمستقبل.
        */
       const status =
-        offer.startsAt > now
+        compareCalendarDates(offer.startsAt, today) > 0
           ? 'SCHEDULED'
           : 'ACTIVE';
 

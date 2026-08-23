@@ -574,6 +574,12 @@ import {
   decimalToNumber,
 } from '../helpers/subscription-pricing.helper';
 import { SubscribePharmacyResponseDto } from '../dto/subscribe-pharmacy-response.dto';
+import {
+  addCalendarDays,
+  getSubscriptionToday,
+  isDateInsideInclusiveRange,
+  toDateOnly,
+} from '../helpers/subscription-date.helper';
 
 @Injectable()
 export class SubscribePharmacyUseCase {
@@ -674,79 +680,43 @@ export class SubscribePharmacyUseCase {
 
     // =========================================================
     // STEP 3
-    // تحويل startsAt القادم من الأدمن إلى Date
+    // تحويل startsAt إلى CALENDAR DATE فقط
     // =========================================================
 
-    const startsAt = new Date(dto.startsAt);
-
     /*
-     * حماية إضافية.
+     * لا يوجد أي معنى للساعة ضمن Business Logic الاشتراك.
      *
-     * IsISO8601 موجود في DTO،
-     * لكن نضع فحص منطقي أيضاً.
+     * أمثلة جميعها تعامل كتاريخ 2026-08-23:
+     * 2026-08-23
+     * 2026-08-23T09:05:00.000Z
+     *
+     * ويتم التخزين بشكل Canonical عند 00:00 UTC فقط كتمثيل تقني.
      */
-    if (Number.isNaN(startsAt.getTime())) {
+    let startsAt: Date;
+
+    try {
+      startsAt = toDateOnly(dto.startsAt);
+    } catch {
       throw new BadRequestException('Invalid subscription start date.');
     }
 
-    /**
-     * نحول التاريخين إلى بداية اليوم.
-     *
-     * مثال:
-     * now      = 2026-08-22 14:30
-     * startsAt = 2026-08-22 08:00
-     *
-     * كلاهما يصبح:
-     * 2026-08-22 00:00
-     *
-     * وبالتالي يعتبر الاشتراك ACTIVE.
+    /*
+     * "اليوم" يحسب حسب تقويم العمل في Asia/Damascus،
+     * وليس حسب timezone السيرفر أو Docker.
      */
-    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-    const subscriptionStartDay = new Date(
-      startsAt.getFullYear(),
-      startsAt.getMonth(),
-      startsAt.getDate(),
-    );
+    const today = getSubscriptionToday(now);
 
     /**
      * لا نسمح بتاريخ قبل اليوم.
-     *
-     * الساعة لا تهم.
+     * المقارنة هنا YYYY-MM-DD فقط.
      */
-    if (subscriptionStartDay.getTime() < today.getTime()) {
+    console.log(" startsAt.getTime():", startsAt);
+    console.log(" today.getTime():", today);
+    if (startsAt.getTime() < today.getTime()) {
       throw new BadRequestException(
         'Subscription start date cannot be before today.',
       );
     }
-    // =========================================================
-    // STEP 4
-    // منع إنشاء اشتراك يبدأ في الماضي
-    // =========================================================
-
-    // if (startsAt.getTime() < now.getTime()) {
-    //   throw new BadRequestException(
-    //     'Subscription start date cannot be in the past.',
-    //   );
-    // }
-
-    // const todayUtc = Date.UTC(
-    //   now.getUTCFullYear(),
-    //   now.getUTCMonth(),
-    //   now.getUTCDate(),
-    // );
-
-    // const startDateUtc = Date.UTC(
-    //   startsAt.getUTCFullYear(),
-    //   startsAt.getUTCMonth(),
-    //   startsAt.getUTCDate(),
-    // );
-
-    // if (startDateUtc < todayUtc) {
-    //   throw new BadRequestException(
-    //     'Subscription start date cannot be before today.',
-    //   );
-    // }
 
     // =========================================================
     // STEP 5
@@ -794,19 +764,20 @@ export class SubscribePharmacyUseCase {
         pharmacyId,
 
         status: {
-          in: [
-            PharmacySubscriptionStatus.ACTIVE,
-
-            PharmacySubscriptionStatus.SCHEDULED,
-          ],
+          not: PharmacySubscriptionStatus.CANCELLED,
         },
 
         startsAt: {
           lt: endsAt,
         },
 
+        /*
+         * existing end DATE must be after the new start DATE.
+         * Using the next calendar day also handles old rows that still
+         * contain a non-midnight time on their endsAt date.
+         */
         endsAt: {
-          gt: startsAt,
+          gte: addCalendarDays(startsAt, 1),
         },
       },
 
@@ -966,7 +937,7 @@ export class SubscribePharmacyUseCase {
        * لأننا استخدمنا العرض بتاريخ 20-07
        * وهو صالح في هذا التاريخ.
        */
-      if (offer.startsAt > now || offer.endsAt < now) {
+      if (!isDateInsideInclusiveRange(today, offer.startsAt, offer.endsAt)) {
         throw new BadRequestException('Offer is outside its validity period.');
       }
 
@@ -998,12 +969,17 @@ export class SubscribePharmacyUseCase {
             /*
              * Grant صالح الآن.
              */
+            /*
+             * Grant validity is calendar-date based and inclusive.
+             * validFrom may contain a legacy hour, so any time today
+             * must count as started today.
+             */
             validFrom: {
-              lte: now,
+              lt: addCalendarDays(today, 1),
             },
 
             validUntil: {
-              gte: now,
+              gte: today,
             },
           },
 
@@ -1099,7 +1075,7 @@ export class SubscribePharmacyUseCase {
     //     ? PharmacySubscriptionStatus.SCHEDULED
     //     : PharmacySubscriptionStatus.ACTIVE;
     const subscriptionStatus =
-      subscriptionStartDay.getTime() === today.getTime()
+      startsAt.getTime() === today.getTime()
         ? PharmacySubscriptionStatus.ACTIVE
         : PharmacySubscriptionStatus.SCHEDULED;
 
