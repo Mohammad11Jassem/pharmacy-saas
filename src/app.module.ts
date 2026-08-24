@@ -43,6 +43,7 @@ import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { NotificationModule } from './notification/notification.module';
 import { ThrottlerGuard, ThrottlerModule } from '@nestjs/throttler';
 import { RequestLoggerInterceptor } from './common/interceptors/request-logger.interceptor';
+import { DatabaseBackupModule } from './modules/database-backup/database-backup.module';
 @Module({
   imports: [
     ConfigModule.forRoot({
@@ -122,7 +123,7 @@ import { RequestLoggerInterceptor } from './common/interceptors/request-logger.i
     AnalyticsModule,
     GeneralDrugPriceListModule,
     NotificationModule,
-    // DatabaseBackupModule,
+    DatabaseBackupModule,
   ],
   providers: [
     {

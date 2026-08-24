@@ -192,15 +192,15 @@ export class HttpRagServiceClient implements RagServiceClient {
       throw new Error('INVALID_RAG_RESPONSE: updatedSummary is empty.');
     }
 
-    const conversationTitle = input.isFirstTurn
-      ? this.toOptionalString(response.conversationTitle)
-      : null;
+    // const conversationTitle = input.isFirstTurn
+    //   ? this.toOptionalString(response.conversationTitle)
+    //   : null;
 
-    if (input.isFirstTurn && !conversationTitle) {
-      throw new Error(
-        'INVALID_RAG_RESPONSE: conversationTitle is required for the first turn.',
-      );
-    }
+    // if (input.isFirstTurn && !conversationTitle) {
+    //   throw new Error(
+    //     'INVALID_RAG_RESPONSE: conversationTitle is required for the first turn.',
+    //   );
+    // }
     const sources = Array.isArray(response.sources) ? response.sources : [];
 
     return {
@@ -211,10 +211,10 @@ export class HttpRagServiceClient implements RagServiceClient {
        * لذلك نولد عنواناً احتياطياً من أول سؤال.
        * هذا الكلام قبل التعديل , ولكن الآن أصبح العنوان يصل من الRagService
        */
-      // conversationTitle: input.isFirstTurn
-      //   ? this.createConversationTitle(input.question)
-      //   : null,
-      conversationTitle,
+      conversationTitle: input.isFirstTurn
+        ? this.createConversationTitle(input.question)
+        : null,
+      // conversationTitle,
 
       updatedSummary,
 
