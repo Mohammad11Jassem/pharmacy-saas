@@ -15,6 +15,7 @@ import { CreatePharmacyOwnerDto } from './dto/create-pharmacy-owner.dto';
 import { UpdatePharmacyOwnerDto } from './dto/update-pharmacy-owner.dto';
 import { PrismaService } from '../../prisma/prisma.service';
 import { ListPharmacyOwnersDto } from './dto/list-pharmacy-owners.dto';
+import { SmsService } from '../../common/integrations/sms/sms.service';
 
 type TransactionClient = Prisma.TransactionClient;
 
@@ -33,6 +34,7 @@ export class PharmacyOwnersService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly codeGenerationService: CodeGenerationService,
+    private readonly smsService: SmsService,
   ) {}
 
   async createForPharmacyAccount(
@@ -60,7 +62,11 @@ export class PharmacyOwnersService {
         nationalId: dto.nationalId,
       },
     });
-
+    await this.smsService.sendPharmacyOwnerLoginCode(
+      userAccount.phone,
+      userAccount.fullName,
+      userAccount.loginCode,
+    );
     return {
       userId: userAccount.userId,
       pharmacyOwnerId: pharmacyOwner.pharmacyOwnerId,
@@ -161,34 +167,30 @@ export class PharmacyOwnersService {
     return 'This action adds a new pharmacyOwner';
   }
 
-  async findAll(
-  dto: ListPharmacyOwnersDto,
-) {
-  
-  const skip = (dto.page - 1) * dto.limit;
+  async findAll(dto: ListPharmacyOwnersDto) {
+    const skip = (dto.page - 1) * dto.limit;
 
-  const userFilter: Prisma.UserAccountWhereInput = {};
+    const userFilter: Prisma.UserAccountWhereInput = {};
 
-  if (dto.name) {
-    userFilter.fullName = {
-      contains: dto.name,
-      mode: 'insensitive',
-    };
-  }
-   // if (dto.phone) {
-  //   userFilter.phone = {
-  //     contains: dto.phone,
-  //   };
-  // }
-  const where: Prisma.PharmacyOwnerWhereInput =
-    Object.keys(userFilter).length > 0
-      ? {
-          user: userFilter,
-        }
-      : {};
+    if (dto.name) {
+      userFilter.fullName = {
+        contains: dto.name,
+        mode: 'insensitive',
+      };
+    }
+    // if (dto.phone) {
+    //   userFilter.phone = {
+    //     contains: dto.phone,
+    //   };
+    // }
+    const where: Prisma.PharmacyOwnerWhereInput =
+      Object.keys(userFilter).length > 0
+        ? {
+            user: userFilter,
+          }
+        : {};
 
-  const [pharmacyOwners, totalItems] =
-    await Promise.all([
+    const [pharmacyOwners, totalItems] = await Promise.all([
       this.prisma.pharmacyOwner.findMany({
         where,
 
@@ -241,7 +243,6 @@ export class PharmacyOwnersService {
       hasPreviousPage,
     };
   }
-  
 
   findOne(id: number) {
     return `This action returns a #${id} pharmacyOwner`;

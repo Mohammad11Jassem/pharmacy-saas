@@ -181,4 +181,17 @@ export class SmsService {
       `MediXa: تم إنشاء صيدلية ${pharmacyName} بنجاح. رقم التسجيل  للصيدلية هو: ${loginCode}`,
     );
   }
+  /**
+   * Sends the pharmacy login code to its owner.
+   */
+  async sendPharmacyOwnerLoginCode(
+    phone: string,
+    ownerName: string,
+    loginCode: string,
+  ): Promise<SmsSendResult> {
+    return this.sendSms(
+      phone,
+      `MediXa: تم إنشاء حساب ${ownerName} بنجاح. رقم التسجيل  للحساب هو: ${loginCode}`,
+    );
+  }
 }

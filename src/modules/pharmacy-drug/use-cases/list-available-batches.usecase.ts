@@ -199,6 +199,7 @@ export class ListAvailableBatchesUseCase {
         AND b."pharmacy_drug_id" = ${pharmacyDrugId}
         AND b."status" = 'ACTIVE'::"BatchStatus"
         AND (b."initial_quantity" - b."sold_quantity") > 0
+        AND b."expiry_date"::date > CURRENT_DATE
       ORDER BY
         b."expiry_date" ASC NULLS LAST,
         b."created_at" ASC,
