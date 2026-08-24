@@ -64,3 +64,8 @@ src/generated/prisma/
 
 # TypeScript incremental build metadata
 *.tsbuildinfo
+# Backup secrets and local backup artifacts
+/secrets/
+/tmp-backups/
+*.dump
+*.dump.enc
